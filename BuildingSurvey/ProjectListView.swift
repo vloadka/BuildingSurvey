@@ -34,14 +34,14 @@ struct ProjectListView: View {
             List(viewModel.projects) { project in
                 Text(project.name)
             }
-            
+         
             Spacer()
             
-            NavigationLink(destination: CreateProjectView(viewModel: CreateProjectViewModel(projectListViewModel: viewModel))) {
-                Image(systemName: "plus.circle.fill")
-                    .resizable()
-                    .frame(width: 50, height: 50)
-            }
+            NavigationLink(destination: CreateProjectView(viewModel: CreateProjectViewModel(repository: viewModel.repository))) {
+                            Image(systemName: "plus.circle.fill")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                        }
             .padding()
         }
     }

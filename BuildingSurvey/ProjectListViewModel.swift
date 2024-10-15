@@ -6,16 +6,21 @@
 //
 
 import SwiftUI
+import Combine
 
 class ProjectListViewModel: ObservableObject {
     @Published var projects: [Project] = []
     
-    func createProject() {
-        // Логика для перехода на страницу создания проекта
-    }
+    // Делаем свойство repository доступным снаружи
+    var repository: ProjectRepository
     
-    func addProject(name: String) {
-        let newProject = Project(name: name)
-        projects.append(newProject)
+    private var cancellables = Set<AnyCancellable>()
+    
+    init(repository: ProjectRepository) {
+        self.repository = repository
+        // Подписываемся на изменения в списке проектов
+        repository.projectsListPublisher
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$projects)
     }
 }

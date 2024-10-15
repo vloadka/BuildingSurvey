@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct LoginView: View {
+    var repository: ProjectRepository
+    
     var body: some View {
         VStack {
             Spacer()
@@ -21,7 +23,7 @@ struct LoginView: View {
             Text("Работа на объекте")
                 .font(.subheadline)
                 .padding(.bottom, 50)
-            NavigationLink(destination: ProjectListView(viewModel: ProjectListViewModel())) {
+            NavigationLink(destination: ProjectListView(viewModel: ProjectListViewModel(repository: repository))) {
                 Text("Войти")
                     .font(.headline)
                     .padding()

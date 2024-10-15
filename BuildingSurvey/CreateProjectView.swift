@@ -10,7 +10,8 @@ import SwiftUI
 struct CreateProjectView: View {
     @State private var projectName: String = ""
     @ObservedObject var viewModel: CreateProjectViewModel
-    @Environment(\.dismiss) var dismiss  // Используем для возврата
+    @Environment(\.dismiss) var dismiss  // Используется для возврата к предыдущему экрану
+    @State private var showError: Bool = false // Переменная для отображения ошибки
     
     var body: some View {
         VStack {
@@ -18,9 +19,19 @@ struct CreateProjectView: View {
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding()
             
+            if showError {
+                Text("Название проекта не может быть пустым.")
+                    .foregroundColor(.red)
+                    .padding(.bottom, 10)
+            }
+            
             Button(action: {
-                viewModel.saveProject(name: projectName)
-                dismiss() // После сохранения, вернуться на предыдущий экран
+                if projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    showError = true // Показываем ошибку, если название пустое
+                } else {
+                    viewModel.saveProject(name: projectName)
+                    dismiss() // Возвращаемся на предыдущий экран после сохранения
+                }
             }) {
                 Text("Сохранить")
                     .font(.headline)

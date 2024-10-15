@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct BuildingSurveyApp: App {
+    var projectRepository = ProjectRepository()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(repository: projectRepository)
         }
     }
 }

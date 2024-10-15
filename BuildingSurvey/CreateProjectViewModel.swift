@@ -8,13 +8,14 @@
 import SwiftUI
 
 class CreateProjectViewModel: ObservableObject {
-    var projectListViewModel: ProjectListViewModel
+    private var repository: ProjectRepository
     
-    init(projectListViewModel: ProjectListViewModel) {
-        self.projectListViewModel = projectListViewModel
+    init(repository: ProjectRepository) {
+        self.repository = repository
     }
     
+    // Метод для сохранения проекта
     func saveProject(name: String) {
-        projectListViewModel.addProject(name: name)
+        repository.addProject(name: name)
     }
 }

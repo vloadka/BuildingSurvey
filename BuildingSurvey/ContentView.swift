@@ -27,11 +27,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject var projectListViewModel = ProjectListViewModel()
+    var repository: ProjectRepository
     
     var body: some View {
         NavigationView {
-            LoginView()
+            LoginView(repository: repository)
                 .navigationBarHidden(true)
         }
     }
