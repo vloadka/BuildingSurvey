@@ -10,4 +10,5 @@ import Foundation
 struct Project: Identifiable {
     var id = UUID()
     var name: String
+    var isDeleted: Int = 0
 }

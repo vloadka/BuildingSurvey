@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ProjectListView: View {
-    @ObservedObject var viewModel: ProjectListViewModel
+    @StateObject var viewModel = ProjectListViewModel(repository: GeneralRepository())
     
     var body: some View {
         VStack {
@@ -31,18 +31,20 @@ struct ProjectListView: View {
             Text("Мои проекты")
                 .font(.largeTitle)
             
-            List(viewModel.projects) { project in
+            List(viewModel.uiState.projects) { project in
                 Text(project.name)
             }
-         
+            
             Spacer()
             
-            NavigationLink(destination: CreateProjectView(viewModel: CreateProjectViewModel(repository: viewModel.repository))) {
-                            Image(systemName: "plus.circle.fill")
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                        }
+            NavigationLink(destination: { CreateProjectView(viewModel: CreateProjectViewModel(repository: viewModel.repository)) }) {
+                Image(systemName: "plus.circle.fill")
+                    .resizable()
+                    .frame(width: 50, height: 50)
+            }
             .padding()
         }
     }
 }
+
+

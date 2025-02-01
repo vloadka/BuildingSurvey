@@ -27,7 +27,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    var repository: ProjectRepository
+    var repository: GeneralRepository
     
     var body: some View {
         NavigationView {

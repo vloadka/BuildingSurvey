@@ -1,10 +1,3 @@
-//
-//  CreateProjectView.swift
-//  BuildingSurvey
-//
-//  Created by Влада Лодочникова on 30.09.2024.
-//
-
 import SwiftUI
 
 struct CreateProjectView: View {
@@ -19,18 +12,12 @@ struct CreateProjectView: View {
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding()
             
-            if showError {
-                Text("Название проекта не может быть пустым.")
-                    .foregroundColor(.red)
-                    .padding(.bottom, 10)
-            }
-            
             Button(action: {
-                if projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    showError = true // Показываем ошибку, если название пустое
+                viewModel.saveProject(name: projectName)
+                if viewModel.errorMessage == nil {
+                    dismiss() // Возвращаемся на предыдущий экран только если ошибки нет
                 } else {
-                    viewModel.saveProject(name: projectName)
-                    dismiss() // Возвращаемся на предыдущий экран после сохранения
+                    showError = true // Показываем уведомление, если ошибка
                 }
             }) {
                 Text("Сохранить")
@@ -44,5 +31,33 @@ struct CreateProjectView: View {
             .padding()
         }
         .padding()
+        .toast(isPresented: $showError, message: viewModel.errorMessage ?? "")
+    }
+}
+
+// Пример простой Toast-функции
+extension View {
+    func toast(isPresented: Binding<Bool>, message: String) -> some View {
+        ZStack {
+            self
+            if isPresented.wrappedValue {
+                VStack {
+                    Spacer()
+                    Text(message)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        .transition(.move(edge: .bottom))
+                        .animation(.easeInOut(duration: 0.5))
+                }
+                .padding()
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        isPresented.wrappedValue = false
+                    }
+                }
+            }
+        }
     }
 }

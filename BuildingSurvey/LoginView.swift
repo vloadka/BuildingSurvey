@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct LoginView: View {
-    var repository: ProjectRepository
+    var repository: GeneralRepository
     
     var body: some View {
         VStack {

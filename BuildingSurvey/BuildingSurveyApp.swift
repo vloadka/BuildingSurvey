@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct BuildingSurveyApp: App {
-    var projectRepository = ProjectRepository()
+    var projectRepository = GeneralRepository()
     
     var body: some Scene {
         WindowGroup {

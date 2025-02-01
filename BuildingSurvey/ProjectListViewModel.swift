@@ -8,19 +8,35 @@
 import SwiftUI
 import Combine
 
+// Модель состояния для управления состоянием проекта
+struct ProjectListUiState {
+    var projects: [Project] = []
+}
+
+// ViewModel для списка проектов
 class ProjectListViewModel: ObservableObject {
-    @Published var projects: [Project] = []
+    @Published var uiState = ProjectListUiState()
     
     // Делаем свойство repository доступным снаружи
-    var repository: ProjectRepository
+    var repository: GeneralRepository
     
     private var cancellables = Set<AnyCancellable>()
     
-    init(repository: ProjectRepository) {
+    init(repository: GeneralRepository) {
         self.repository = repository
-        // Подписываемся на изменения в списке проектов
+        
+        // Подписываемся на изменения в списке проектов и обновляем состояние
         repository.projectsListPublisher
             .receive(on: DispatchQueue.main)
-            .assign(to: &$projects)
+            .sink { [weak self] projects in
+                self?.uiState.projects = projects
+            }
+            .store(in: &cancellables)
+    }
+    
+    // Метод для добавления проекта
+    func addProject(name: String, isDeleted: Int) {
+        repository.addProject(name: name, isDeleted: isDeleted)
     }
 }
+
