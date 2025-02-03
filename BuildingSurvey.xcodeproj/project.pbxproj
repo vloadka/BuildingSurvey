@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF105B862CBEF780007E9C1E /* GeneralRepository.swift */; };
+		FF83512D2D4F77FB002E64D2 /* PhotoLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF83512C2D4F77FB002E64D2 /* PhotoLoader.swift */; };
+		FF83512F2D4F7839002E64D2 /* LoadFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF83512E2D4F7839002E64D2 /* LoadFile.swift */; };
+		FF8351312D4F78B0002E64D2 /* TakePhoto.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF8351302D4F78B0002E64D2 /* TakePhoto.swift */; };
 		FF994F7F2C9B55E10027A6D3 /* BuildingSurveyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */; };
 		FF994F812C9B55E10027A6D3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994F802C9B55E10027A6D3 /* ContentView.swift */; };
 		FF994F832C9B55E30027A6D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FF994F822C9B55E30027A6D3 /* Assets.xcassets */; };
@@ -42,6 +45,10 @@
 
 /* Begin PBXFileReference section */
 		FF105B862CBEF780007E9C1E /* GeneralRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralRepository.swift; sourceTree = "<group>"; };
+		FF83512C2D4F77FB002E64D2 /* PhotoLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLoader.swift; sourceTree = "<group>"; };
+		FF83512E2D4F7839002E64D2 /* LoadFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadFile.swift; sourceTree = "<group>"; };
+		FF8351302D4F78B0002E64D2 /* TakePhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakePhoto.swift; sourceTree = "<group>"; };
+		FF8351382D4F9D51002E64D2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FF994F7B2C9B55E10027A6D3 /* BuildingSurvey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuildingSurvey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildingSurveyApp.swift; sourceTree = "<group>"; };
 		FF994F802C9B55E10027A6D3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -116,6 +123,7 @@
 		FF994F7D2C9B55E10027A6D3 /* BuildingSurvey */ = {
 			isa = PBXGroup;
 			children = (
+				FF8351382D4F9D51002E64D2 /* Info.plist */,
 				FF105B852CBEF731007E9C1E /* Repositories */,
 				FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */,
 				FF994F802C9B55E10027A6D3 /* ContentView.swift */,
@@ -127,6 +135,9 @@
 				FF994FAE2CAAFA140027A6D3 /* ProjectListViewModel.swift */,
 				FF994FB02CAAFA380027A6D3 /* CreateProjectViewModel.swift */,
 				FF994FB22CAAFA5F0027A6D3 /* Project.swift */,
+				FF83512C2D4F77FB002E64D2 /* PhotoLoader.swift */,
+				FF83512E2D4F7839002E64D2 /* LoadFile.swift */,
+				FF8351302D4F78B0002E64D2 /* TakePhoto.swift */,
 			);
 			path = BuildingSurvey;
 			sourceTree = "<group>";
@@ -287,11 +298,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */,
+				FF8351312D4F78B0002E64D2 /* TakePhoto.swift in Sources */,
 				FF994FA92CAAF8D70027A6D3 /* LoginView.swift in Sources */,
 				FF994FB12CAAFA380027A6D3 /* CreateProjectViewModel.swift in Sources */,
+				FF83512D2D4F77FB002E64D2 /* PhotoLoader.swift in Sources */,
 				FF994FAD2CAAF9DF0027A6D3 /* CreateProjectView.swift in Sources */,
 				FF994F812C9B55E10027A6D3 /* ContentView.swift in Sources */,
 				FF994FAB2CAAF9B70027A6D3 /* ProjectListView.swift in Sources */,
+				FF83512F2D4F7839002E64D2 /* LoadFile.swift in Sources */,
 				FF994FAF2CAAFA140027A6D3 /* ProjectListViewModel.swift in Sources */,
 				FF994F7F2C9B55E10027A6D3 /* BuildingSurveyApp.swift in Sources */,
 				FF994FB32CAAFA5F0027A6D3 /* Project.swift in Sources */,
@@ -461,7 +475,7 @@
 				DEVELOPMENT_TEAM = XY4YH2JXZC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_FILE = BuildingSurvey/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -490,7 +504,7 @@
 				DEVELOPMENT_TEAM = XY4YH2JXZC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_FILE = BuildingSurvey/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

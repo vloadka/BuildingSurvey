@@ -38,5 +38,9 @@ class ProjectListViewModel: ObservableObject {
     func addProject(name: String, isDeleted: Int) {
         repository.addProject(name: name, isDeleted: isDeleted)
     }
+    
+    func deleteProject(id: UUID) {
+            repository.updateProject(id: id, isDeleted: 1)
+        }
 }
 

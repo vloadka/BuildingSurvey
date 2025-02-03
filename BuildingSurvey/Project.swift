@@ -11,4 +11,5 @@ struct Project: Identifiable {
     var id = UUID()
     var name: String
     var isDeleted: Int = 0
+    var projectFilePath: String? // Хранение пути к файлу обложки
 }

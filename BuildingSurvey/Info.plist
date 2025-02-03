@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSFileProviderDomainUsageDescription</key>
+	<string>ъуъ</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>ъуъ</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>ъуъ</string>
+	<key>NSFileProviderPresenceUsageDescription</key>
+	<string>ъуъ</string>
+	<key>NSAppDataUsageDescription</key>
+	<string>ЪУЪ</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Это приложение использует камеру для захвата фотографий.</string>
+</dict>
+</plist>
