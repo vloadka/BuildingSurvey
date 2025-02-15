@@ -13,11 +13,11 @@ struct LoginView: View {
     var body: some View {
         VStack {
             Spacer()
-            Image(systemName: "triangle.fill")
+            Image("Subtract")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 100, height: 100)
-            Text("Checkpoint-K")
+            Text("Ksupoint")
                 .font(.largeTitle)
                 .padding()
             Text("Работа на объекте")
@@ -28,7 +28,7 @@ struct LoginView: View {
                     .font(.headline)
                     .padding()
                     .frame(width: 200, height: 50)
-                    .background(Color.blue)
+                    .background(Color.black)
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }

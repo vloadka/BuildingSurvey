@@ -7,9 +7,8 @@
 
 import Foundation
 
-struct Project: Identifiable {
+struct Project: Identifiable, Hashable {
     var id = UUID()
     var name: String
-    var isDeleted: Int = 0
     var projectFilePath: String? // Хранение пути к файлу обложки
 }

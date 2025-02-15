@@ -36,40 +36,33 @@ class CreateProjectViewModel: ObservableObject {
         } else if !uiState.isNotRepeatProjectName {
             return "Проект с таким именем уже существует."
         }
-        return ""
+        return "Не удалось загрузить. Выберите другое изображение"
     }
     
     func saveProject() {
-        uiState.isValidProjectName = !uiState.projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        uiState.isNotRepeatProjectName = !repository.getProjectNames().contains(uiState.projectName)
-        
-        if uiState.isValidProjectName && uiState.isNotRepeatProjectName {
-            repository.addProject(
-                name: uiState.projectName,
-                isDeleted: 0,
-                projectFilePath: uiState.currentPhotoPath // Передаем путь обложки
-            )
-            loadActiveProjects()
-        } else {
-            showToast = true
-        }
-    }
+           uiState.isValidProjectName = !uiState.projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+           uiState.isNotRepeatProjectName = !activeProjects.contains { $0.name == uiState.projectName }
+
+           if uiState.isValidProjectName && uiState.isNotRepeatProjectName {
+               repository.addProject(
+                   name: uiState.projectName,
+                   projectFilePath: uiState.currentPhotoPath
+               )
+               loadActiveProjects()
+           } else {
+               showToast = true
+           }
+       }
         
         // Метод для загрузки активных проектов (isDeleted == 0)
         func loadActiveProjects() {
             repository.projectsListPublisher
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] projects in
-                    self?.activeProjects = projects.filter { $0.isDeleted == 0 }
+                    self?.activeProjects = projects
                 }
                 .store(in: &cancellables)
         }
-    
-//    // Метод для удаления проекта (устанавливаем isDeleted = 1)
-//    func deleteProject(_ project: Project) {
-//        repository.updateProject(id: project.id, isDeleted: 1)
-//        loadActiveProjects() // Обновляем список активных проектов после удаления
-//    }
     
     // Метод для установки пути к файлу обложки
     func setProjectFilePath(_ path: String) {

@@ -80,7 +80,7 @@ struct CreateProjectView: View {
             PhotoLoader(selectedImage: $selectedPhoto, selectedPhotoPath: viewModel.currentPhotoPathBinding)
         }
         .sheet(isPresented: $showLoadFile) {
-            LoadFile(selectedImage: $selectedPhoto, selectedPhotoPath: viewModel.currentPhotoPathBinding)
+            LoadFile(selectedImage: $selectedPhoto, selectedPhotoPath: viewModel.currentPhotoPathBinding, showError: $showError)
         }
         .fullScreenCover(isPresented: $showCamera) {
             TakePhoto(selectedImage: $selectedPhoto, selectedPhotoPath: viewModel.currentPhotoPathBinding)
