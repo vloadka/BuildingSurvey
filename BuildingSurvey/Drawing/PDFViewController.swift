@@ -12,9 +12,8 @@ import CoreGraphics
 class PhotoMarkerButton: UIButton {
     var photo: UIImage?
     var photoEntityId: UUID?
-    var normalizedCoordinate: CGPoint?  // Новое свойство для фиксированных координат
+    var normalizedCoordinate: CGPoint?  // Свойство для фиксированных координат
 }
-
 
 struct PhotoMarkerData {
     let id: UUID
@@ -22,13 +21,16 @@ struct PhotoMarkerData {
     let coordinate: CGPoint
 }
 
-class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate {
     private let pdfURL: URL
     private let drawingId: UUID
     private let repository: GeneralRepository
 
-    private var drawingView: DrawingView!
+    private var pdfScrollView: UIScrollView!
+    private var pdfContentView: UIView!
     private var pdfImageView: UIImageView!
+    private var drawingView: DrawingView!
+    
     private var drawingToggleButton: UIButton!
     private var drawingEnabled: Bool = false
     
@@ -45,8 +47,15 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     private var currentPhotoMarker: PhotoMarkerButton?
     
     private var currentViewingMarker: PhotoMarkerButton?
-
-
+    
+    // Флаг, чтобы маркеры загружались только один раз после установки размеров
+    private var markersLoaded = false
+    
+    // Ключ для сохранения зума в UserDefaults
+    private var zoomScaleKey: String {
+        return "pdfZoomScale_\(drawingId.uuidString)"
+    }
+    
     init(pdfURL: URL, drawingId: UUID, repository: GeneralRepository) {
         self.pdfURL = pdfURL
         self.drawingId = drawingId
@@ -61,52 +70,123 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Настроим навигацию
         navigationItem.largeTitleDisplayMode = .always
         
-        // Создаем панели для иконок
+        setupPanels()
+        setupScrollViewAndContent()
+        setupPDFAndDrawingViews()
+        setupButtons()
+        setupPhotoMarkerTapRecognizer()
+        
+        loadSavedLines()
+        // Загрузка маркеров происходит в viewDidLayoutSubviews, когда размеры установлены
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // Вычисляем минимальный масштаб, чтобы PDF полностью помещался на экране
+        let scrollSize = pdfScrollView.bounds.size
+        let contentSize = pdfContentView.bounds.size
+        if contentSize.width > 0 && contentSize.height > 0 {
+            let widthScale = scrollSize.width / contentSize.width
+            let heightScale = scrollSize.height / contentSize.height
+            let minScale = min(widthScale, heightScale)
+            pdfScrollView.minimumZoomScale = minScale
+            // Если текущий зум меньше минимального, устанавливаем его
+            if pdfScrollView.zoomScale < minScale {
+                pdfScrollView.zoomScale = minScale
+            }
+        }
+        
+        if !markersLoaded {
+            pdfContentView.layoutIfNeeded()
+            loadPhotoMarkers()
+            markersLoaded = true
+        }
+    }
+    
+    // MARK: - Настройка интерфейса
+    private func setupPanels() {
         let panelHeight: CGFloat = 60.0
         
         topPanel = UIView()
         topPanel.translatesAutoresizingMaskIntoConstraints = false
-        topPanel.backgroundColor = .white // Непрозрачный фон
+        topPanel.backgroundColor = .white
         view.addSubview(topPanel)
         
         bottomPanel = UIView()
         bottomPanel.translatesAutoresizingMaskIntoConstraints = false
-        bottomPanel.backgroundColor = .white // Непрозрачный фон
+        bottomPanel.backgroundColor = .white
         view.addSubview(bottomPanel)
         
         NSLayoutConstraint.activate([
-            // Верхняя панель
             topPanel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             topPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             topPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             topPanel.heightAnchor.constraint(equalToConstant: panelHeight),
-            // Нижняя панель
+            
             bottomPanel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
             bottomPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomPanel.heightAnchor.constraint(equalToConstant: panelHeight)
         ])
+    }
+    
+    private func setupScrollViewAndContent() {
+        pdfScrollView = UIScrollView()
+        pdfScrollView.translatesAutoresizingMaskIntoConstraints = false
+        pdfScrollView.delegate = self
+        // Задаем максимально допустимый зум
+        pdfScrollView.maximumZoomScale = 4.0
+        // Задаем минимальный зум по умолчанию (будет пересчитан в viewDidLayoutSubviews)
+        pdfScrollView.minimumZoomScale = 1.0
+        let savedZoom = UserDefaults.standard.float(forKey: zoomScaleKey)
+        pdfScrollView.zoomScale = savedZoom > 0 ? CGFloat(savedZoom) : 1.0
+        view.addSubview(pdfScrollView)
         
-        // Создаем UIImageView для отображения PDF и располагаем его между панелями
+        NSLayoutConstraint.activate([
+            pdfScrollView.topAnchor.constraint(equalTo: topPanel.bottomAnchor),
+            pdfScrollView.bottomAnchor.constraint(equalTo: bottomPanel.topAnchor),
+            pdfScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            pdfScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+        
+        pdfContentView = UIView()
+        pdfContentView.translatesAutoresizingMaskIntoConstraints = false
+        pdfScrollView.addSubview(pdfContentView)
+        
+        if let pdfImage = renderPDFtoImage(url: pdfURL) {
+            let pdfSize = pdfImage.size
+            NSLayoutConstraint.activate([
+                pdfContentView.topAnchor.constraint(equalTo: pdfScrollView.topAnchor),
+                pdfContentView.bottomAnchor.constraint(equalTo: pdfScrollView.bottomAnchor),
+                pdfContentView.leadingAnchor.constraint(equalTo: pdfScrollView.leadingAnchor),
+                pdfContentView.trailingAnchor.constraint(equalTo: pdfScrollView.trailingAnchor),
+                pdfContentView.widthAnchor.constraint(equalToConstant: pdfSize.width),
+                pdfContentView.heightAnchor.constraint(equalToConstant: pdfSize.height)
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                pdfContentView.topAnchor.constraint(equalTo: pdfScrollView.topAnchor),
+                pdfContentView.bottomAnchor.constraint(equalTo: pdfScrollView.bottomAnchor),
+                pdfContentView.leadingAnchor.constraint(equalTo: pdfScrollView.leadingAnchor),
+                pdfContentView.trailingAnchor.constraint(equalTo: pdfScrollView.trailingAnchor)
+            ])
+        }
+    }
+    
+    private func setupPDFAndDrawingViews() {
         pdfImageView = UIImageView()
         pdfImageView.translatesAutoresizingMaskIntoConstraints = false
         pdfImageView.contentMode = .scaleAspectFit
+        // Включаем взаимодействие, чтобы кнопки внутри работали
+        pdfImageView.isUserInteractionEnabled = true
         if let pdfImage = renderPDFtoImage(url: pdfURL) {
             pdfImageView.image = pdfImage
         }
-        view.addSubview(pdfImageView)
+        pdfContentView.addSubview(pdfImageView)
         
-        NSLayoutConstraint.activate([
-            pdfImageView.topAnchor.constraint(equalTo: topPanel.bottomAnchor),
-            pdfImageView.bottomAnchor.constraint(equalTo: bottomPanel.topAnchor),
-            pdfImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            pdfImageView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
-        ])
-        
-        // Настроим DrawingView, который располагается поверх pdfImageView
         drawingView = DrawingView(frame: .zero)
         drawingView.translatesAutoresizingMaskIntoConstraints = false
         drawingView.backgroundColor = .clear
@@ -114,23 +194,23 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             guard let self = self else { return }
             self.repository.saveLine(for: self.drawingId, start: start, end: end)
         }
-        // Изначально режим рисования выключен
         drawingView.isUserInteractionEnabled = false
-        view.addSubview(drawingView)
+        pdfContentView.addSubview(drawingView)
         
         NSLayoutConstraint.activate([
-            drawingView.topAnchor.constraint(equalTo: pdfImageView.topAnchor),
-            drawingView.bottomAnchor.constraint(equalTo: pdfImageView.bottomAnchor),
-            drawingView.leadingAnchor.constraint(equalTo: pdfImageView.leadingAnchor),
-            drawingView.trailingAnchor.constraint(equalTo: pdfImageView.trailingAnchor)
+            pdfImageView.topAnchor.constraint(equalTo: pdfContentView.topAnchor),
+            pdfImageView.bottomAnchor.constraint(equalTo: pdfContentView.bottomAnchor),
+            pdfImageView.leadingAnchor.constraint(equalTo: pdfContentView.leadingAnchor),
+            pdfImageView.trailingAnchor.constraint(equalTo: pdfContentView.trailingAnchor),
+            
+            drawingView.topAnchor.constraint(equalTo: pdfContentView.topAnchor),
+            drawingView.bottomAnchor.constraint(equalTo: pdfContentView.bottomAnchor),
+            drawingView.leadingAnchor.constraint(equalTo: pdfContentView.leadingAnchor),
+            drawingView.trailingAnchor.constraint(equalTo: pdfContentView.trailingAnchor)
         ])
-        
-        // Загружаем сохраненные линии и преобразуем их в тип Line
-        let savedLines = repository.loadLines(for: drawingId)
-        let lineObjects = savedLines.map { Line(start: $0.0, end: $0.1) }
-        drawingView.loadLines(lineObjects)
-        
-        // Добавляем кнопку для переключения режима рисования в нижней панели
+    }
+    
+    private func setupButtons() {
         drawingToggleButton = UIButton(type: .custom)
         drawingToggleButton.translatesAutoresizingMaskIntoConstraints = false
         drawingToggleButton.setImage(UIImage(named: "Line_passive"), for: .normal)
@@ -144,7 +224,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             drawingToggleButton.widthAnchor.constraint(equalToConstant: 44)
         ])
         
-        // Добавляем иконку (например, меню) в верхней панели
         let topIconButton = UIButton(type: .custom)
         topIconButton.translatesAutoresizingMaskIntoConstraints = false
         topIconButton.setImage(UIImage(named: "settings"), for: .normal)
@@ -157,7 +236,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             topIconButton.widthAnchor.constraint(equalToConstant: 30)
         ])
         
-        // Добавляем дополнительную кнопку в верхней панели для фото-режима
         topToggleButton = UIButton(type: .custom)
         topToggleButton.translatesAutoresizingMaskIntoConstraints = false
         topToggleButton.setImage(UIImage(named: "Photo_passive_1"), for: .normal)
@@ -170,16 +248,30 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             topToggleButton.heightAnchor.constraint(equalToConstant: 30),
             topToggleButton.widthAnchor.constraint(equalToConstant: 30)
         ])
-        
-        // Инициализируем распознаватель тапа для установки фото-маркера (по умолчанию отключен)
+    }
+    
+    private func setupPhotoMarkerTapRecognizer() {
         photoMarkerTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handlePhotoMarkerTap(_:)))
         photoMarkerTapRecognizer.isEnabled = false
         view.addGestureRecognizer(photoMarkerTapRecognizer)
-        
-        loadPhotoMarkers()
     }
     
-    // MARK: - Режим рисования (нижняя кнопка)
+    private func loadSavedLines() {
+        let savedLines = repository.loadLines(for: drawingId)
+        let lineObjects = savedLines.map { Line(start: $0.0, end: $0.1) }
+        drawingView.loadLines(lineObjects)
+    }
+    
+    // MARK: - UIScrollViewDelegate
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+        return pdfContentView
+    }
+    
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+        UserDefaults.standard.set(Float(scale), forKey: zoomScaleKey)
+    }
+    
+    // MARK: - Режимы работы
     @objc private func toggleDrawingMode(_ sender: UIButton) {
         drawingEnabled.toggle()
         drawingView.isUserInteractionEnabled = drawingEnabled
@@ -187,48 +279,41 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         drawingToggleButton.setImage(UIImage(named: imageName), for: .normal)
     }
     
-    // MARK: - Режим фото (верхняя кнопка)
     @objc private func toggleTopButtonMode(_ sender: UIButton) {
         topButtonActive.toggle()
         let imageName = topButtonActive ? "Photo_active_1" : "Photo_passive_1"
         topToggleButton.setImage(UIImage(named: imageName), for: .normal)
-        // Включаем или отключаем возможность установки фото-маркера
         photoMarkerTapRecognizer.isEnabled = topButtonActive
     }
     
     // MARK: - Установка фото-маркера
     @objc private func handlePhotoMarkerTap(_ sender: UITapGestureRecognizer) {
-        let location = sender.location(in: view)
+        let locationInView = sender.location(in: pdfContentView)
         let markerSize: CGFloat = 30.0
-        let markerFrame = CGRect(x: location.x - markerSize/2, y: location.y - markerSize/2, width: markerSize, height: markerSize)
+        let markerFrame = CGRect(x: locationInView.x - markerSize/2,
+                                 y: locationInView.y - markerSize/2,
+                                 width: markerSize,
+                                 height: markerSize)
         let markerButton = PhotoMarkerButton(frame: markerFrame)
         markerButton.backgroundColor = .red
         markerButton.layer.cornerRadius = markerSize / 2
         markerButton.clipsToBounds = true
         markerButton.addTarget(self, action: #selector(photoMarkerTapped(_:)), for: .touchUpInside)
-        view.addSubview(markerButton)
-        view.bringSubviewToFront(markerButton)
+        pdfImageView.addSubview(markerButton)
+        pdfImageView.bringSubviewToFront(markerButton)
         
-        // Обновляем layout, чтобы размеры pdfImageView были корректными
-        view.layoutIfNeeded()
-        // Фиксируем координаты в системе pdfImageView
-        let markerCenterInPDF = pdfImageView.convert(markerButton.center, from: view)
-        let normalizedX = markerCenterInPDF.x / pdfImageView.bounds.width
-        let normalizedY = markerCenterInPDF.y / pdfImageView.bounds.height
+        let normalizedX = locationInView.x / pdfContentView.bounds.width
+        let normalizedY = locationInView.y / pdfContentView.bounds.height
         markerButton.normalizedCoordinate = CGPoint(x: normalizedX, y: normalizedY)
         
         currentPhotoMarker = markerButton
         photoMarkerTapRecognizer.isEnabled = false
         presentCamera()
     }
-
     
-    // MARK: - Запуск камеры
+    // MARK: - Работа с камерой
     private func presentCamera() {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-            // Если камера недоступна, можно вывести alert или выполнить другой код
-            return
-        }
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else { return }
         let picker = UIImagePickerController()
         picker.sourceType = .camera
         picker.delegate = self
@@ -242,13 +327,10 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
               let marker = currentPhotoMarker,
               let normalized = marker.normalizedCoordinate else { return }
         
-        // Генерируем уникальный идентификатор для метки и сохраняем его в кнопке
         let markerId = UUID()
         marker.photoEntityId = markerId
-        
         let photoNumber = repository.getNextPhotoNumber(forDrawing: drawingId)
         
-        // Сохраняем фото-маркер с зафиксированными нормализованными координатами
         repository.savePhotoMarker(forDrawing: drawingId,
                                    withId: markerId,
                                    image: image,
@@ -257,33 +339,26 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
                                    coordinateX: Double(normalized.x),
                                    coordinateY: Double(normalized.y))
         
-        // Обновляем внешний вид метки
         marker.photo = image
         marker.setBackgroundImage(image, for: .normal)
         
         currentPhotoMarker = nil
         photoMarkerTapRecognizer.isEnabled = topButtonActive
     }
-
-
-
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         picker.dismiss(animated: true)
-        // Если пользователь отменил съемку, удаляем созданный маркер
         currentPhotoMarker?.removeFromSuperview()
         currentPhotoMarker = nil
         photoMarkerTapRecognizer.isEnabled = topButtonActive
     }
     
-    // MARK: - Обработка нажатия на фото-маркер
+    // MARK: - Работа с фото-маркерами
     @objc private func photoMarkerTapped(_ sender: PhotoMarkerButton) {
         guard let photo = sender.photo else { return }
         presentPhoto(photo, forMarker: sender)
     }
-
     
-    // Отображение фотографии в полном экране
     private func presentPhoto(_ image: UIImage, forMarker marker: PhotoMarkerButton) {
         let photoVC = UIViewController()
         photoVC.view.backgroundColor = .black
@@ -299,7 +374,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             imageView.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor)
         ])
         
-        // Кнопка закрыть
         let closeButton = UIButton(type: .system)
         closeButton.setTitle("Закрыть", for: .normal)
         closeButton.tintColor = .white
@@ -311,7 +385,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             closeButton.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor, constant: -16)
         ])
         
-        // Кнопка удалить
         let deleteButton = UIButton(type: .system)
         deleteButton.setTitle("Удалить", for: .normal)
         deleteButton.tintColor = .red
@@ -323,12 +396,9 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             deleteButton.centerXAnchor.constraint(equalTo: photoVC.view.centerXAnchor)
         ])
         
-        // Сохраняем ссылку на текущую метку для удаления
         self.currentViewingMarker = marker
-        
         present(photoVC, animated: true)
     }
-
     
     @objc private func dismissPhotoVC() {
         dismiss(animated: true)
@@ -351,11 +421,12 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
     }
     
+    // MARK: - Загрузка фото-маркеров
     private func loadPhotoMarkers() {
         let markers = repository.loadPhotoMarkers(forDrawing: drawingId)
         let markerSize: CGFloat = 30.0
-        view.layoutIfNeeded()
-        let pdfFrame = pdfImageView.frame
+        
+        pdfContentView.layoutIfNeeded()
         
         for markerData in markers {
             let markerButton = PhotoMarkerButton(frame: CGRect(x: 0, y: 0, width: markerSize, height: markerSize))
@@ -366,32 +437,22 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             markerButton.clipsToBounds = true
             markerButton.addTarget(self, action: #selector(photoMarkerTapped(_:)), for: .touchUpInside)
             
-            // Сохраняем идентификатор для возможности удаления
             markerButton.photoEntityId = markerData.id
-            // Сохраняем нормализованные координаты, если понадобится
             markerButton.normalizedCoordinate = markerData.coordinate
             
-            // Вычисляем абсолютное положение на основе нормализованных координат
-            let centerX = pdfFrame.origin.x + markerData.coordinate.x * pdfFrame.width
-            let centerY = pdfFrame.origin.y + markerData.coordinate.y * pdfFrame.height
+            let centerX = markerData.coordinate.x * pdfContentView.bounds.width
+            let centerY = markerData.coordinate.y * pdfContentView.bounds.height
             markerButton.center = CGPoint(x: centerX, y: centerY)
             
-            view.addSubview(markerButton)
-            view.bringSubviewToFront(markerButton)
+            pdfImageView.addSubview(markerButton)
+            pdfImageView.bringSubviewToFront(markerButton)
         }
     }
-
-
-
-
     
     @objc private func deletePhotoMarkerAction(_ sender: UIButton) {
-        guard let marker = currentViewingMarker, let markerId = marker.photoEntityId else {
-            return
-        }
+        guard let marker = currentViewingMarker, let markerId = marker.photoEntityId else { return }
         repository.deletePhotoMarker(withId: markerId)
         marker.removeFromSuperview()
         dismiss(animated: true)
     }
-
 }

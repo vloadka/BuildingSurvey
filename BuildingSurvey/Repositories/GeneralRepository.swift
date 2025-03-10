@@ -16,7 +16,6 @@ class GeneralRepository: ObservableObject {
     private let context = CoreDataManager.shared.context
     private let fileManager = FileManager.default
 
-
     var projectsListPublisher: Published<[Project]>.Publisher {
         return $_projectsList
     }
@@ -49,21 +48,22 @@ class GeneralRepository: ObservableObject {
             print("Ошибка удаления проекта: \(error)")
         }
     }
-        func loadProjects() {
-            let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
-            do {
-                let fetchedProjects = try context.fetch(fetchRequest)
-                _projectsList = fetchedProjects.map { projectEntity in
-                    Project(
-                        id: projectEntity.id ?? UUID(),
-                        name: projectEntity.name ?? "Без названия",
-                        projectFilePath: projectEntity.projectFilePath
-                    )
-                }
-            } catch {
-                print("Ошибка загрузки проектов: \(error)")
+    
+    func loadProjects() {
+        let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
+        do {
+            let fetchedProjects = try context.fetch(fetchRequest)
+            _projectsList = fetchedProjects.map { projectEntity in
+                Project(
+                    id: projectEntity.id ?? UUID(),
+                    name: projectEntity.name ?? "Без названия",
+                    projectFilePath: projectEntity.projectFilePath
+                )
             }
+        } catch {
+            print("Ошибка загрузки проектов: \(error)")
         }
+    }
 
     func addDrawing(for project: Project, name: String, filePath: String?) {
         let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
@@ -125,42 +125,42 @@ class GeneralRepository: ObservableObject {
     }
     
     func saveLine(for drawingId: UUID, start: CGPoint, end: CGPoint) {
-            let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+        let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
 
-            do {
-                if let drawing = try context.fetch(fetchRequest).first {
-                    let line = LineEntity(context: context)
-                    line.id = UUID()
-                    line.startX = start.x
-                    line.startY = start.y
-                    line.endX = end.x
-                    line.endY = end.y
-                    line.drawing = drawing  // Связываем линию с чертежом
-                    
-                    saveContext()
-                }
-            } catch {
-                print("Ошибка сохранения линии: \(error)")
+        do {
+            if let drawing = try context.fetch(fetchRequest).first {
+                let line = LineEntity(context: context)
+                line.id = UUID()
+                line.startX = start.x
+                line.startY = start.y
+                line.endX = end.x
+                line.endY = end.y
+                line.drawing = drawing  // Связываем линию с чертежом
+                
+                saveContext()
             }
+        } catch {
+            print("Ошибка сохранения линии: \(error)")
         }
+    }
 
-        func loadLines(for drawingId: UUID) -> [(CGPoint, CGPoint)] {
-            let fetchRequest: NSFetchRequest<LineEntity> = LineEntity.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
+    func loadLines(for drawingId: UUID) -> [(CGPoint, CGPoint)] {
+        let fetchRequest: NSFetchRequest<LineEntity> = LineEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
 
-            do {
-                let lines = try context.fetch(fetchRequest)
-                return lines.map { line in
-                    let start = CGPoint(x: line.startX, y: line.startY)
-                    let end = CGPoint(x: line.endX, y: line.endY)
-                    return (start, end)
-                }
-            } catch {
-                print("Ошибка загрузки линий: \(error)")
-                return []
+        do {
+            let lines = try context.fetch(fetchRequest)
+            return lines.map { line in
+                let start = CGPoint(x: line.startX, y: line.startY)
+                let end = CGPoint(x: line.endX, y: line.endY)
+                return (start, end)
             }
+        } catch {
+            print("Ошибка загрузки линий: \(error)")
+            return []
         }
+    }
 
     private func saveContext() {
         CoreDataManager.shared.saveContext()
@@ -180,7 +180,6 @@ class GeneralRepository: ObservableObject {
             return 1
         }
     }
-
     
     func savePhotoMarker(forDrawing drawingId: UUID,
                          withId id: UUID,
@@ -241,6 +240,4 @@ class GeneralRepository: ObservableObject {
             print("Ошибка удаления фото-маркера: \(error)")
         }
     }
-
-
 }

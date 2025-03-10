@@ -23,13 +23,3 @@ public class DrawingEntity: NSManagedObject {
         return copy
     }
 }
-
-//extension DrawingEntity {
-//    @NSManaged public var annotations: NSSet?
-//    
-//    func addAnnotation(_ annotation: DrawingAnnotationEntity) {
-//        let annotationsSet = mutableSetValue(forKey: "annotations")
-//        annotationsSet.add(annotation)
-//    }
-//}
-

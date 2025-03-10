@@ -67,4 +67,3 @@ class DrawingView: UIView {
         setNeedsDisplay() // Обновляем экран
     }
 }
-
