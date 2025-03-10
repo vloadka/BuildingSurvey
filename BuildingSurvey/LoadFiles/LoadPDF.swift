@@ -7,6 +7,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
+import PDFKit
 
 struct LoadPDF: UIViewControllerRepresentable {
     @Binding var selectedPDF: URL?
@@ -54,26 +55,34 @@ struct LoadPDF: UIViewControllerRepresentable {
                     try fileManager.createDirectory(at: projectFolder, withIntermediateDirectories: true)
                 }
 
-                let destinationURL = projectFolder.appendingPathComponent(selectedFileURL.lastPathComponent)
+                let destinationURL = projectFolder.appendingPathComponent("single_page.pdf")
 
-                if fileManager.fileExists(atPath: destinationURL.path) {
-                    try fileManager.removeItem(at: destinationURL)
-                    print("Удален существующий файл: \(destinationURL.path)")
-                }
+                // Создание одностраничного PDF
+                if let document = PDFDocument(url: selectedFileURL),
+                   let firstPage = document.page(at: 0) {
 
-                try fileManager.copyItem(at: selectedFileURL, to: destinationURL)
-                print("Файл скопирован: \(destinationURL.path)")
+                    let newDocument = PDFDocument()
+                    newDocument.insert(firstPage, at: 0)
 
-                DispatchQueue.main.async {
-                    self.parent.selectedPDF = destinationURL
-                    self.parent.fileName = selectedFileURL.lastPathComponent
-                    print("Выбранный файл: \(self.parent.fileName)")
+                    if newDocument.write(to: destinationURL) {
+                        print("Сохранён одностраничный PDF: \(destinationURL.path)")
+                        
+                        DispatchQueue.main.async {
+                            self.parent.selectedPDF = destinationURL
+                            self.parent.fileName = "single_page.pdf"
+                        }
+                    } else {
+                        print("Ошибка сохранения одностраничного PDF")
+                        DispatchQueue.main.async {
+                            self.parent.showError = true
+                        }
+                    }
                 }
             } catch {
                 DispatchQueue.main.async {
                     self.parent.showError = true
                 }
-                print("Ошибка копирования файла: \(error.localizedDescription)")
+                print("Ошибка обработки PDF: \(error.localizedDescription)")
             }
         }
 

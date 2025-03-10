@@ -1,5 +1,5 @@
 //
-//  coreDataManager.swift
+//  CoreDataManager.swift
 //  BuildingSurvey
 //
 //  Created by Влада Лодочникова on 07.02.2025.
@@ -14,7 +14,14 @@ class CoreDataManager {
 
     private init() {
         persistentContainer = NSPersistentContainer(name: "ProjectModel")
-        persistentContainer.loadPersistentStores { _, error in
+        
+        // Включаем легковесную миграцию
+        if let storeDescription = persistentContainer.persistentStoreDescriptions.first {
+            storeDescription.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
+            storeDescription.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
+        }
+        
+        persistentContainer.loadPersistentStores { description, error in
             if let error = error {
                 fatalError("Ошибка загрузки хранилища Core Data: \(error)")
             }

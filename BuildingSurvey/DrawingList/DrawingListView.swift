@@ -13,6 +13,7 @@ struct DrawingListView: View {
     @State private var isAddingDrawing = false
     @State private var showAlert = false
     @State private var drawingToDelete: Drawing? = nil
+    @State private var selectedDrawing: Drawing? = nil
 
     init(project: Project, repository: GeneralRepository) {
         self.project = project
@@ -44,6 +45,10 @@ struct DrawingListView: View {
                                     .foregroundColor(.red)
                             }
                             .buttonStyle(BorderlessButtonStyle())
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedDrawing = drawing
                         }
                     }
                 }
@@ -80,6 +85,15 @@ struct DrawingListView: View {
                 }
             )
         }
+        .background(
+            NavigationLink(destination: PDFViewer(pdfURL: URL(fileURLWithPath: selectedDrawing?.filePath ?? ""), drawingId: selectedDrawing?.id ?? UUID(), repository: GeneralRepository())
+                .navigationTitle(selectedDrawing?.name ?? "") // Устанавливаем заголовок навигационной панели
+            , isActive: Binding(
+                get: { selectedDrawing != nil },
+                set: { if !$0 { selectedDrawing = nil } }
+            )) {
+                EmptyView()
+            }
+        )
     }
 }
-

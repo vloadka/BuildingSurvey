@@ -24,3 +24,12 @@ public class DrawingEntity: NSManagedObject {
     }
 }
 
+//extension DrawingEntity {
+//    @NSManaged public var annotations: NSSet?
+//    
+//    func addAnnotation(_ annotation: DrawingAnnotationEntity) {
+//        let annotationsSet = mutableSetValue(forKey: "annotations")
+//        annotationsSet.add(annotation)
+//    }
+//}
+

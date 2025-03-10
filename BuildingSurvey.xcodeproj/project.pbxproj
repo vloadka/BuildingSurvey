@@ -36,6 +36,14 @@
 		FFCC17E62D60CD6F00BF061B /* Drawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17E52D60CD6F00BF061B /* Drawing.swift */; };
 		FFCC17E82D60CF5500BF061B /* DrawingEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17E72D60CF5500BF061B /* DrawingEntity.swift */; };
 		FFCC17EA2D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17E92D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift */; };
+		FFCC17F02D660DA700BF061B /* PDFViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17EF2D660DA700BF061B /* PDFViewer.swift */; };
+		FFFCDA5D2D68B79500681B3B /* DrawingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA5C2D68B79500681B3B /* DrawingViewModel.swift */; };
+		FFFCDA6B2D78C03400681B3B /* LineEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */; };
+		FFFCDA6D2D78C08100681B3B /* LineEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA6C2D78C08100681B3B /* LineEntity.swift */; };
+		FFFCDA6F2D78C34500681B3B /* DrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA6E2D78C34500681B3B /* DrawingView.swift */; };
+		FFFCDA712D78C6A900681B3B /* PDFViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA702D78C6A900681B3B /* PDFViewController.swift */; };
+		FFFCDA732D78CFCD00681B3B /* Line.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA722D78CFCD00681B3B /* Line.swift */; };
+		FFFCDA772D7B3D6800681B3B /* PhotoEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA762D7B3D6800681B3B /* PhotoEntity.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -89,6 +97,14 @@
 		FFCC17E52D60CD6F00BF061B /* Drawing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Drawing.swift; sourceTree = "<group>"; };
 		FFCC17E72D60CF5500BF061B /* DrawingEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingEntity.swift; sourceTree = "<group>"; };
 		FFCC17E92D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DrawingEntity+CoreDataProperties.swift"; sourceTree = "<group>"; };
+		FFCC17EF2D660DA700BF061B /* PDFViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFViewer.swift; sourceTree = "<group>"; };
+		FFFCDA5C2D68B79500681B3B /* DrawingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingViewModel.swift; sourceTree = "<group>"; };
+		FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LineEntity+CoreDataProperties.swift"; sourceTree = "<group>"; };
+		FFFCDA6C2D78C08100681B3B /* LineEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineEntity.swift; sourceTree = "<group>"; };
+		FFFCDA6E2D78C34500681B3B /* DrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingView.swift; sourceTree = "<group>"; };
+		FFFCDA702D78C6A900681B3B /* PDFViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFViewController.swift; sourceTree = "<group>"; };
+		FFFCDA722D78CFCD00681B3B /* Line.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Line.swift; sourceTree = "<group>"; };
+		FFFCDA762D7B3D6800681B3B /* PhotoEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoEntity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,9 +146,12 @@
 				FF8351392D5654AB002E64D2 /* ProjectModel.xcdatamodeld */,
 				FF83513D2D5655BE002E64D2 /* CoreDataManager.swift */,
 				FF83513F2D565908002E64D2 /* ProjectEntity.swift */,
-				FFCC17E72D60CF5500BF061B /* DrawingEntity.swift */,
 				FF8351412D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift */,
+				FFCC17E72D60CF5500BF061B /* DrawingEntity.swift */,
 				FFCC17E92D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift */,
+				FFFCDA6C2D78C08100681B3B /* LineEntity.swift */,
+				FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */,
+				FFFCDA762D7B3D6800681B3B /* PhotoEntity.swift */,
 			);
 			path = bd;
 			sourceTree = "<group>";
@@ -173,7 +192,9 @@
 				FFCC17E12D60CACC00BF061B /* DrawingList */,
 				FFCC17E22D60CAE300BF061B /* AddDrawing */,
 				FFCC17E42D60CB9300BF061B /* LoadFiles */,
+				FFFCDA5B2D68B75000681B3B /* Drawing */,
 				FF994FB22CAAFA5F0027A6D3 /* Project.swift */,
+				FFFCDA722D78CFCD00681B3B /* Line.swift */,
 				FFCC17E52D60CD6F00BF061B /* Drawing.swift */,
 			);
 			path = BuildingSurvey;
@@ -257,6 +278,17 @@
 				FF83512C2D4F77FB002E64D2 /* PhotoLoader.swift */,
 			);
 			path = LoadFiles;
+			sourceTree = "<group>";
+		};
+		FFFCDA5B2D68B75000681B3B /* Drawing */ = {
+			isa = PBXGroup;
+			children = (
+				FFCC17EF2D660DA700BF061B /* PDFViewer.swift */,
+				FFFCDA5C2D68B79500681B3B /* DrawingViewModel.swift */,
+				FFFCDA702D78C6A900681B3B /* PDFViewController.swift */,
+				FFFCDA6E2D78C34500681B3B /* DrawingView.swift */,
+			);
+			path = Drawing;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -391,19 +423,27 @@
 			files = (
 				FFCC17EA2D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift in Sources */,
 				FF8351422D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift in Sources */,
+				FFFCDA6D2D78C08100681B3B /* LineEntity.swift in Sources */,
 				FF8351402D565908002E64D2 /* ProjectEntity.swift in Sources */,
+				FFFCDA6F2D78C34500681B3B /* DrawingView.swift in Sources */,
 				FF83513B2D5654AB002E64D2 /* ProjectModel.xcdatamodeld in Sources */,
 				FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */,
 				FFCC17DA2D59108900BF061B /* AddDrawingView.swift in Sources */,
 				FFCC17E82D60CF5500BF061B /* DrawingEntity.swift in Sources */,
 				FF8351312D4F78B0002E64D2 /* TakePhoto.swift in Sources */,
+				FFFCDA712D78C6A900681B3B /* PDFViewController.swift in Sources */,
+				FFCC17F02D660DA700BF061B /* PDFViewer.swift in Sources */,
 				FF994FA92CAAF8D70027A6D3 /* LoginView.swift in Sources */,
 				FFCC17D62D58F62300BF061B /* DrawingListView.swift in Sources */,
 				FF994FB12CAAFA380027A6D3 /* CreateProjectViewModel.swift in Sources */,
 				FFCC17DC2D59127F00BF061B /* AddDrawingViewModel.swift in Sources */,
+				FFFCDA5D2D68B79500681B3B /* DrawingViewModel.swift in Sources */,
 				FFCC17E62D60CD6F00BF061B /* Drawing.swift in Sources */,
+				FFFCDA6B2D78C03400681B3B /* LineEntity+CoreDataProperties.swift in Sources */,
+				FFFCDA772D7B3D6800681B3B /* PhotoEntity.swift in Sources */,
 				FF83512D2D4F77FB002E64D2 /* PhotoLoader.swift in Sources */,
 				FFCC17D82D58F63900BF061B /* DrawingListViewModel.swift in Sources */,
+				FFFCDA732D78CFCD00681B3B /* Line.swift in Sources */,
 				FF83513E2D5655BE002E64D2 /* CoreDataManager.swift in Sources */,
 				FFCC17DE2D5916E900BF061B /* LoadPDF.swift in Sources */,
 				FF994FAD2CAAF9DF0027A6D3 /* CreateProjectView.swift in Sources */,
