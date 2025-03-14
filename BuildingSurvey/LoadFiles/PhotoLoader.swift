@@ -10,7 +10,6 @@ import PhotosUI
 
 struct PhotoLoader: UIViewControllerRepresentable {
     @Binding var selectedImage: UIImage?
-    @Binding var selectedPhotoPath: String?
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration()
@@ -45,7 +44,6 @@ struct PhotoLoader: UIViewControllerRepresentable {
                     DispatchQueue.main.async {
                         if let uiImage = image as? UIImage {
                             self.parent.selectedImage = uiImage
-                            self.parent.saveImageToDocuments(image: uiImage) // Сохраняем изображение и получаем путь
                         }
                     }
                 }
@@ -58,15 +56,13 @@ extension PhotoLoader {
     func saveImageToDocuments(image: UIImage) {
         guard let data = image.jpegData(compressionQuality: 1.0) else { return }
         
-        // Получаем URL для сохранения изображения
         let fileManager = FileManager.default
         if let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
-            let fileName = "gallery_photo_\(UUID().uuidString).jpg" // Уникальное имя файла
+            let fileName = "gallery_photo_\(UUID().uuidString).jpg"
             let fileURL = documentsDirectory.appendingPathComponent(fileName)
 
             do {
-                try data.write(to: fileURL) // Записываем данные изображения в файл
-                self.selectedPhotoPath = fileURL.path // Устанавливаем путь к файлу
+                try data.write(to: fileURL)
             } catch {
                 print("Ошибка при сохранении изображения: \(error)")
             }

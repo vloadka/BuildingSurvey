@@ -10,7 +10,6 @@ import AVFoundation
 
 struct TakePhoto: UIViewControllerRepresentable {
     @Binding var selectedImage: UIImage?
-    @Binding var selectedPhotoPath: String?
 
     class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
         var parent: TakePhoto
@@ -22,27 +21,13 @@ struct TakePhoto: UIViewControllerRepresentable {
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
             if let image = info[.originalImage] as? UIImage {
                 parent.selectedImage = image
-                
-                // Сохраняем изображение в Documents
-                if let data = image.jpegData(compressionQuality: 1.0) {
-                    let fileName = "captured_photo.jpg"
-                    let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                    let fileURL = documentDirectory.appendingPathComponent(fileName)
-
-                    do {
-                        try data.write(to: fileURL)
-                        parent.selectedPhotoPath = fileURL.path // Устанавливаем полный путь
-                    } catch {
-                        print("Ошибка при сохранении изображения: \(error)")
-                    }
-                }
             }
-                picker.dismiss(animated: true)
+            picker.dismiss(animated: true)
         }
     }
 
     func makeCoordinator() -> Coordinator {
-        return Coordinator(self)
+        Coordinator(self)
     }
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
@@ -55,4 +40,3 @@ struct TakePhoto: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
 }
-

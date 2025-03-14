@@ -1,10 +1,3 @@
-//
-//  ProjectListViewModel.swift
-//  BuildingSurvey
-//
-//  Created by Влада Лодочникова on 30.09.2024.
-//
-
 import SwiftUI
 import Combine
 
@@ -13,19 +6,14 @@ struct ProjectListUiState {
     var projects: [Project] = []
 }
 
-// ViewModel для списка проектов
 class ProjectListViewModel: ObservableObject {
     @Published var uiState = ProjectListUiState()
-    
-    // Делаем свойство repository доступным снаружи
     var repository: GeneralRepository
-    
     private var cancellables = Set<AnyCancellable>()
     
     init(repository: GeneralRepository) {
         self.repository = repository
         
-        // Подписываемся на изменения в списке проектов и обновляем состояние
         repository.projectsListPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] projects in
@@ -34,10 +22,12 @@ class ProjectListViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    
     func deleteProject(id: UUID) {
         repository.deleteProject(id: id)
     }
-
+    
+    // Метод для загрузки обложки проекта по его id
+    func loadCoverImage(for projectId: UUID) -> UIImage? {
+        return repository.loadCoverImage(forProjectId: projectId)
+    }
 }
-

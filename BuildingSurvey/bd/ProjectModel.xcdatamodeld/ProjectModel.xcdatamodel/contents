@@ -41,6 +41,7 @@
         <relationship name="drawing" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="polylines" inverseEntity="DrawingEntity"/>
     </entity>
     <entity name="ProjectEntity" representedClassName="ProjectEntity" syncable="YES">
+        <attribute name="coverImageData" optional="YES" attributeType="Binary"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="projectFilePath" optional="YES" attributeType="String"/>

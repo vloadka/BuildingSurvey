@@ -24,12 +24,11 @@ class GeneralRepository: ObservableObject {
         loadProjects()
     }
 
-    func addProject(name: String, projectFilePath: String? = nil) {
+    func addProject(name: String, coverImageData: Data? = nil) {
         let newProject = ProjectEntity(context: context)
         newProject.id = UUID()
         newProject.name = name
-        newProject.projectFilePath = projectFilePath
-
+        newProject.coverImageData = coverImageData
         saveContext()
         loadProjects() // Перезагружаем данные
     }
@@ -57,7 +56,7 @@ class GeneralRepository: ObservableObject {
                 Project(
                     id: projectEntity.id ?? UUID(),
                     name: projectEntity.name ?? "Без названия",
-                    projectFilePath: projectEntity.projectFilePath
+                    coverImageData: projectEntity.coverImageData
                 )
             }
         } catch {
@@ -360,6 +359,38 @@ class GeneralRepository: ObservableObject {
             return []
         }
     }
+    
+    func saveCoverImage(forProjectId projectId: UUID, image: UIImage) {
+        let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", projectId as CVarArg)
+        
+        do {
+            if let project = try context.fetch(fetchRequest).first {
+                // Сохраняем изображение в формате PNG (вы можете использовать и JPEG, например, с jpegData(compressionQuality: 0.8))
+                project.coverImageData = image.pngData()
+                saveContext()
+            } else {
+                print("Ошибка: проект с id \(projectId) не найден.")
+            }
+        } catch {
+            print("Ошибка сохранения обложки проекта: \(error)")
+        }
+    }
+
+    func loadCoverImage(forProjectId projectId: UUID) -> UIImage? {
+        let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", projectId as CVarArg)
+        
+        do {
+            if let project = try context.fetch(fetchRequest).first, let data = project.coverImageData {
+                return UIImage(data: data)
+            }
+        } catch {
+            print("Ошибка загрузки обложки проекта: \(error)")
+        }
+        return nil
+    }
+
 
 
 }

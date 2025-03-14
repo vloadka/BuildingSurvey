@@ -13,7 +13,6 @@ struct ProjectListView: View {
     @State private var projectToDelete: Project? = nil // Проект, который нужно удалить
     @State private var selectedProject: Project? = nil
         
-    
     var body: some View {
         VStack {
             HStack {
@@ -50,7 +49,6 @@ struct ProjectListView: View {
                 .shadow(color: Color.gray.opacity(0.3), radius: 5, x: 0, y: 2)
                 .padding(.vertical, 5)
             }
-
             .listStyle(PlainListStyle())
             
             Spacer()
@@ -73,7 +71,6 @@ struct ProjectListView: View {
                     if let project = projectToDelete {
                         viewModel.deleteProject(id: project.id)
                     }
-                    
                 },
                 secondaryButton: .cancel {
                     projectToDelete = nil // Отменяем выбранный проект
@@ -98,11 +95,9 @@ struct ProjectRow: View {
             }
             .hidden() // Скрываем сам NavigationLink
             
-            // Изображение с обработчиком нажатия
-            if let imagePath = project.projectFilePath,
-               !imagePath.isEmpty,
-               let image = UIImage(contentsOfFile: imagePath) {
-                createImageView(image: Image(uiImage: image))
+            // Обновлённый блок: создаём UIImage из coverImageData, если оно есть
+            if let data = project.coverImageData, let uiImage = UIImage(data: data) {
+                createImageView(image: Image(uiImage: uiImage))
                     .onTapGesture {
                         isActive = true  // Активируем переход
                     }
@@ -132,13 +127,13 @@ struct ProjectRow: View {
     }
 }
     
-    private func createImageView(image: Image) -> some View {
-        image
-            .resizable()
-            .scaledToFill()
-            .frame(maxWidth: .infinity)
-            .frame(height: 150)
-            .clipped()
-            .cornerRadius(10)
-            .padding(.bottom, 5)
-    }
+private func createImageView(image: Image) -> some View {
+    image
+        .resizable()
+        .scaledToFill()
+        .frame(maxWidth: .infinity)
+        .frame(height: 150)
+        .clipped()
+        .cornerRadius(10)
+        .padding(.bottom, 5)
+}

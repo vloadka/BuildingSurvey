@@ -10,5 +10,6 @@ import Foundation
 struct Project: Identifiable, Hashable {
     var id = UUID()
     var name: String
-    var projectFilePath: String? // Хранение пути к файлу обложки
+    var coverImageData: Data? // Данные изображения обложки проекта
 }
+
