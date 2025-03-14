@@ -274,4 +274,92 @@ class GeneralRepository: ObservableObject {
                 return []
             }
         }
+    
+    func savePolyline(forDrawing drawingId: UUID, points: [CGPoint], closed: Bool) {
+        let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+        
+        do {
+            if let drawing = try context.fetch(fetchRequest).first {
+                // Создаем новую полилинию
+                let polyline = PolylineEntity(context: context)
+                polyline.id = UUID()
+                polyline.closed = closed
+                
+                // Сериализуем массив точек в Data (нормализованные координаты можно сохранять так же)
+                if let data = try? NSKeyedArchiver.archivedData(withRootObject: points, requiringSecureCoding: false) {
+                    polyline.pointsData = data
+                } else {
+                    print("Ошибка сериализации точек для полилинии")
+                }
+                
+                polyline.drawing = drawing
+                saveContext()
+            } else {
+                print("Ошибка: Чертеж с id \(drawingId) не найден.")
+            }
+        } catch {
+            print("Ошибка сохранения полилинии: \(error)")
+        }
+    }
+    
+    func loadPolylines(forDrawing drawingId: UUID) -> [PolylineData] {
+        let fetchRequest: NSFetchRequest<PolylineEntity> = PolylineEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
+        
+        do {
+            let polylineEntities = try context.fetch(fetchRequest)
+            return polylineEntities.compactMap { entity in
+                guard let id = entity.id,
+                      let data = entity.pointsData,
+                      let points = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data) as? [CGPoint]
+                else { return nil }
+                
+                return PolylineData(id: id, points: points, closed: entity.closed)
+            }
+        } catch {
+            print("Ошибка загрузки полилиний: \(error)")
+            return []
+        }
+    }
+
+    
+    func saveText(forDrawing drawingId: UUID, text: String, coordinate: CGPoint) {
+        let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+        do {
+            if let drawing = try context.fetch(fetchRequest).first {
+                let textEntity = TextEntity(context: context)
+                textEntity.id = UUID()
+                textEntity.text = text
+                textEntity.coordinateX = Double(coordinate.x)
+                textEntity.coordinateY = Double(coordinate.y)
+                textEntity.drawing = drawing
+                saveContext()
+            } else {
+                print("Ошибка: Чертеж с id \(drawingId) не найден.")
+            }
+        } catch {
+            print("Ошибка сохранения текстовой метки: \(error)")
+        }
+    }
+
+    func loadTexts(forDrawing drawingId: UUID) -> [TextMarkerData] {
+        let fetchRequest: NSFetchRequest<TextEntity> = TextEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
+        do {
+            let textEntities = try context.fetch(fetchRequest)
+            return textEntities.compactMap { textEntity in
+                guard let id = textEntity.id,
+                      let text = textEntity.text else { return nil }
+                let coordinate = CGPoint(x: textEntity.coordinateX, y: textEntity.coordinateY)
+                return TextMarkerData(id: id, text: text, coordinate: coordinate)
+            }
+        } catch {
+            print("Ошибка загрузки текстовых меток: \(error)")
+            return []
+        }
+    }
+
+
 }

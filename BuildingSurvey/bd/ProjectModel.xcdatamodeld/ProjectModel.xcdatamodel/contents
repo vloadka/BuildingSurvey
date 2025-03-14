@@ -7,7 +7,9 @@
         <relationship name="lines" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="LineEntity" inverseName="drawing" inverseEntity="LineEntity"/>
         <relationship name="photos" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PhotoEntity" inverseName="drawing" inverseEntity="PhotoEntity"/>
         <relationship name="points" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PointEntity" inverseName="drawing" inverseEntity="PointEntity"/>
+        <relationship name="polylines" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PolylineEntity" inverseName="drawing" inverseEntity="PolylineEntity"/>
         <relationship name="project" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ProjectEntity" inverseName="drawings" inverseEntity="ProjectEntity"/>
+        <relationship name="text" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TextEntity" inverseName="drawing" inverseEntity="TextEntity"/>
     </entity>
     <entity name="LineEntity" representedClassName="LineEntity" syncable="YES">
         <attribute name="endX" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
@@ -32,10 +34,23 @@
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <relationship name="drawing" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="points" inverseEntity="DrawingEntity"/>
     </entity>
+    <entity name="PolylineEntity" representedClassName="PolylineEntity" syncable="YES">
+        <attribute name="closed" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="pointsData" optional="YES" attributeType="Binary"/>
+        <relationship name="drawing" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="polylines" inverseEntity="DrawingEntity"/>
+    </entity>
     <entity name="ProjectEntity" representedClassName="ProjectEntity" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="projectFilePath" optional="YES" attributeType="String"/>
         <relationship name="drawings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="project" inverseEntity="DrawingEntity"/>
+    </entity>
+    <entity name="TextEntity" representedClassName="TextEntity" syncable="YES">
+        <attribute name="coordinateX" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="coordinateY" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="text" optional="YES" attributeType="String"/>
+        <relationship name="drawing" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="text" inverseEntity="DrawingEntity"/>
     </entity>
 </model>

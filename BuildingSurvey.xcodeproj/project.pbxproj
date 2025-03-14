@@ -16,6 +16,8 @@
 		FF8351402D565908002E64D2 /* ProjectEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF83513F2D565908002E64D2 /* ProjectEntity.swift */; };
 		FF8351422D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF8351412D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift */; };
 		FF86A1982D81CC9C00FB9FD6 /* PointEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF86A1972D81CC9C00FB9FD6 /* PointEntity.swift */; };
+		FF86A19A2D8430C800FB9FD6 /* PolylineEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF86A1992D8430C800FB9FD6 /* PolylineEntity.swift */; };
+		FF86A19C2D843E1600FB9FD6 /* TextEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF86A19B2D843E1500FB9FD6 /* TextEntity.swift */; };
 		FF994F7F2C9B55E10027A6D3 /* BuildingSurveyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */; };
 		FF994F812C9B55E10027A6D3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994F802C9B55E10027A6D3 /* ContentView.swift */; };
 		FF994F832C9B55E30027A6D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FF994F822C9B55E30027A6D3 /* Assets.xcassets */; };
@@ -75,6 +77,8 @@
 		FF83513F2D565908002E64D2 /* ProjectEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectEntity.swift; sourceTree = "<group>"; };
 		FF8351412D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProjectEntity+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		FF86A1972D81CC9C00FB9FD6 /* PointEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointEntity.swift; sourceTree = "<group>"; };
+		FF86A1992D8430C800FB9FD6 /* PolylineEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolylineEntity.swift; sourceTree = "<group>"; };
+		FF86A19B2D843E1500FB9FD6 /* TextEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextEntity.swift; sourceTree = "<group>"; };
 		FF994F7B2C9B55E10027A6D3 /* BuildingSurvey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuildingSurvey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildingSurveyApp.swift; sourceTree = "<group>"; };
 		FF994F802C9B55E10027A6D3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -154,7 +158,9 @@
 				FFFCDA6C2D78C08100681B3B /* LineEntity.swift */,
 				FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */,
 				FFFCDA762D7B3D6800681B3B /* PhotoEntity.swift */,
+				FF86A1992D8430C800FB9FD6 /* PolylineEntity.swift */,
 				FF86A1972D81CC9C00FB9FD6 /* PointEntity.swift */,
+				FF86A19B2D843E1500FB9FD6 /* TextEntity.swift */,
 			);
 			path = bd;
 			sourceTree = "<group>";
@@ -425,11 +431,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				FFCC17EA2D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift in Sources */,
+				FF86A19C2D843E1600FB9FD6 /* TextEntity.swift in Sources */,
 				FF8351422D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift in Sources */,
 				FFFCDA6D2D78C08100681B3B /* LineEntity.swift in Sources */,
 				FF8351402D565908002E64D2 /* ProjectEntity.swift in Sources */,
 				FFFCDA6F2D78C34500681B3B /* DrawingView.swift in Sources */,
 				FF83513B2D5654AB002E64D2 /* ProjectModel.xcdatamodeld in Sources */,
+				FF86A19A2D8430C800FB9FD6 /* PolylineEntity.swift in Sources */,
 				FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */,
 				FFCC17DA2D59108900BF061B /* AddDrawingView.swift in Sources */,
 				FFCC17E82D60CF5500BF061B /* DrawingEntity.swift in Sources */,

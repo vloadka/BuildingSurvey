@@ -26,7 +26,20 @@ struct PointMarkerData {
     let coordinate: CGPoint  // координаты хранятся в нормализованном виде (0...1)
 }
 
+struct PolylineData {
+    let id: UUID
+    let points: [CGPoint]
+    let closed: Bool
+}
+
+struct TextMarkerData {
+    let id: UUID
+    let text: String
+    let coordinate: CGPoint
+}
+
 class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate {
+    // Исходные свойства
     private let pdfURL: URL
     private let drawingId: UUID
     private let repository: GeneralRepository
@@ -42,26 +55,32 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     private var topPanel: UIView!
     private var bottomPanel: UIView!
     
-    // Кнопка для переключения фото-режима в верхней панели
+    // Фото-режим
     private var topToggleButton: UIButton!
     private var topButtonActive: Bool = false
-    
-    // Распознаватель для установки фото-маркера (в фото-режиме)
     private var photoMarkerTapRecognizer: UITapGestureRecognizer!
-    // Ссылка на текущий маркер, для которого делается фото
     private var currentPhotoMarker: PhotoMarkerButton?
-    
     private var currentViewingMarker: PhotoMarkerButton?
     
-    // Флаг, чтобы маркеры загружались только один раз после установки размеров
-    private var markersLoaded = false
-    
-    // Новые свойства для режима создания точек
+    // Режим создания точек
     private var pointToggleButton: UIButton!
     private var pointCreationEnabled: Bool = false
     private var pointCreationTapRecognizer: UITapGestureRecognizer!
     
-    // Ключ для сохранения зума в UserDefaults
+    // Режим создания полилиний
+    private var polylineToggleButton: UIButton!
+    private var polylineModeEnabled: Bool = false
+    private var polylineTapRecognizer: UITapGestureRecognizer!
+    private var currentPolylinePoints: [CGPoint] = []
+    private var currentPolylineLayer: CAShapeLayer?
+    private var polylineControlPanel: UIView?
+    
+    // Режим ввода текста
+    private var textToggleButton: UIButton!
+    private var textModeEnabled: Bool = false
+    private var textTapRecognizer: UITapGestureRecognizer!
+    
+    // Ключ для сохранения зума
     private var zoomScaleKey: String {
         return "pdfZoomScale_\(drawingId.uuidString)"
     }
@@ -88,19 +107,27 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         setupButtons()
         setupPhotoMarkerTapRecognizer()
         
-        // Настройка распознавателя для создания точек
+        // Настройка распознавателей для создания точек, полилиний и текста
         pointCreationTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handlePointCreationTap(_:)))
         pointCreationTapRecognizer.isEnabled = false
         pdfContentView.addGestureRecognizer(pointCreationTapRecognizer)
         
+        polylineTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handlePolylineTap(_:)))
+        polylineTapRecognizer.isEnabled = false
+        pdfContentView.addGestureRecognizer(polylineTapRecognizer)
+        
+        textTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTextTap(_:)))
+        textTapRecognizer.isEnabled = false
+        pdfContentView.addGestureRecognizer(textTapRecognizer)
+        
         loadSavedLines()
-        // Загрузка маркеров происходит в viewDidLayoutSubviews, когда размеры установлены
+        // Загрузка фото-маркеров, точек, полилиний и текстовых меток происходит в viewDidLayoutSubviews, когда размеры установлены
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
-        // Вычисляем минимальный масштаб, чтобы PDF полностью помещался на экране
+        // Настройка зума для PDF
         let scrollSize = pdfScrollView.bounds.size
         let contentSize = pdfContentView.bounds.size
         if contentSize.width > 0 && contentSize.height > 0 {
@@ -108,17 +135,16 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             let heightScale = scrollSize.height / contentSize.height
             let minScale = min(widthScale, heightScale)
             pdfScrollView.minimumZoomScale = minScale
-            // Если текущий зум меньше минимального, устанавливаем его
             if pdfScrollView.zoomScale < minScale {
                 pdfScrollView.zoomScale = minScale
             }
         }
         
-        if !markersLoaded {
-            pdfContentView.layoutIfNeeded()
+        if bottomPanel.subviews.count > 0 && pdfContentView.bounds.size != .zero {
             loadPhotoMarkers()
             loadPointMarkers()
-            markersLoaded = true
+            loadPolylineMarkers()
+            loadTextMarkers()
         }
     }
     
@@ -153,9 +179,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         pdfScrollView = UIScrollView()
         pdfScrollView.translatesAutoresizingMaskIntoConstraints = false
         pdfScrollView.delegate = self
-        // Задаем максимально допустимый зум
         pdfScrollView.maximumZoomScale = 4.0
-        // Задаем минимальный зум по умолчанию (будет пересчитан в viewDidLayoutSubviews)
         pdfScrollView.minimumZoomScale = 1.0
         let savedZoom = UserDefaults.standard.float(forKey: zoomScaleKey)
         pdfScrollView.zoomScale = savedZoom > 0 ? CGFloat(savedZoom) : 1.0
@@ -196,7 +220,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         pdfImageView = UIImageView()
         pdfImageView.translatesAutoresizingMaskIntoConstraints = false
         pdfImageView.contentMode = .scaleAspectFit
-        // Включаем взаимодействие, чтобы кнопки внутри работали
         pdfImageView.isUserInteractionEnabled = true
         if let pdfImage = renderPDFtoImage(url: pdfURL) {
             pdfImageView.image = pdfImage
@@ -227,34 +250,58 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func setupButtons() {
-        // Кнопка для рисования линий
+        // Кнопка для линий (рисование линий)
         drawingToggleButton = UIButton(type: .custom)
         drawingToggleButton.translatesAutoresizingMaskIntoConstraints = false
         drawingToggleButton.setImage(UIImage(named: "Line_passive"), for: .normal)
         drawingToggleButton.addTarget(self, action: #selector(toggleDrawingMode(_:)), for: .touchUpInside)
         bottomPanel.addSubview(drawingToggleButton)
         
-        NSLayoutConstraint.activate([
-            drawingToggleButton.centerXAnchor.constraint(equalTo: bottomPanel.centerXAnchor),
-            drawingToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
-            drawingToggleButton.heightAnchor.constraint(equalToConstant: 44),
-            drawingToggleButton.widthAnchor.constraint(equalToConstant: 44)
-        ])
+        // Кнопка для полилиний
+        polylineToggleButton = UIButton(type: .custom)
+        polylineToggleButton.translatesAutoresizingMaskIntoConstraints = false
+        polylineToggleButton.setImage(UIImage(named: "broken_line_passive"), for: .normal)
+        polylineToggleButton.addTarget(self, action: #selector(togglePolylineMode(_:)), for: .touchUpInside)
+        bottomPanel.addSubview(polylineToggleButton)
         
-        // Кнопка для создания точек
+        // Кнопка для точек
         pointToggleButton = UIButton(type: .custom)
         pointToggleButton.translatesAutoresizingMaskIntoConstraints = false
         pointToggleButton.setImage(UIImage(named: "point_defect_passive"), for: .normal)
         pointToggleButton.addTarget(self, action: #selector(togglePointMode(_:)), for: .touchUpInside)
         bottomPanel.addSubview(pointToggleButton)
         
+        // Кнопка для ввода текста
+        textToggleButton = UIButton(type: .custom)
+        textToggleButton.translatesAutoresizingMaskIntoConstraints = false
+        textToggleButton.setImage(UIImage(named: "text_passive"), for: .normal)
+        textToggleButton.addTarget(self, action: #selector(toggleTextMode(_:)), for: .touchUpInside)
+        bottomPanel.addSubview(textToggleButton)
+        
+        // Располагаем кнопки горизонтально: [text] - [polyline] - [drawing] - [point]
         NSLayoutConstraint.activate([
-            pointToggleButton.trailingAnchor.constraint(equalTo: drawingToggleButton.leadingAnchor, constant: -20),
+            drawingToggleButton.centerXAnchor.constraint(equalTo: bottomPanel.centerXAnchor),
+            drawingToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
+            drawingToggleButton.heightAnchor.constraint(equalToConstant: 44),
+            drawingToggleButton.widthAnchor.constraint(equalToConstant: 44),
+            
+            polylineToggleButton.trailingAnchor.constraint(equalTo: drawingToggleButton.leadingAnchor, constant: -20),
+            polylineToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
+            polylineToggleButton.heightAnchor.constraint(equalToConstant: 44),
+            polylineToggleButton.widthAnchor.constraint(equalToConstant: 44),
+            
+            pointToggleButton.leadingAnchor.constraint(equalTo: drawingToggleButton.trailingAnchor, constant: 20),
             pointToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
             pointToggleButton.heightAnchor.constraint(equalToConstant: 44),
-            pointToggleButton.widthAnchor.constraint(equalToConstant: 44)
+            pointToggleButton.widthAnchor.constraint(equalToConstant: 44),
+            
+            textToggleButton.trailingAnchor.constraint(equalTo: polylineToggleButton.leadingAnchor, constant: -20),
+            textToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
+            textToggleButton.heightAnchor.constraint(equalToConstant: 44),
+            textToggleButton.widthAnchor.constraint(equalToConstant: 44)
         ])
         
+        // Кнопки на верхней панели
         let topIconButton = UIButton(type: .custom)
         topIconButton.translatesAutoresizingMaskIntoConstraints = false
         topIconButton.setImage(UIImage(named: "settings"), for: .normal)
@@ -293,6 +340,43 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         drawingView.loadLines(lineObjects)
     }
     
+    // Новый метод для загрузки полилиний
+    private func loadPolylineMarkers() {
+        let polylines = repository.loadPolylines(forDrawing: drawingId)
+        for polyline in polylines {
+            let shapeLayer = CAShapeLayer()
+            shapeLayer.strokeColor = UIColor.orange.cgColor
+            shapeLayer.lineWidth = 2.0
+            shapeLayer.fillColor = UIColor.clear.cgColor
+            let path = UIBezierPath()
+            if let first = polyline.points.first {
+                path.move(to: first)
+                for point in polyline.points.dropFirst() {
+                    path.addLine(to: point)
+                }
+            }
+            shapeLayer.path = path.cgPath
+            pdfContentView.layer.addSublayer(shapeLayer)
+        }
+    }
+    
+    // Новый метод для загрузки текстовых меток
+    private func loadTextMarkers() {
+        let texts = repository.loadTexts(forDrawing: drawingId)
+        for textMarker in texts {
+            let label = UILabel()
+            label.text = textMarker.text
+            label.textColor = .blue
+            label.backgroundColor = UIColor.white.withAlphaComponent(0.7)
+            label.sizeToFit()
+            let centerX = textMarker.coordinate.x * pdfContentView.bounds.width
+            let centerY = textMarker.coordinate.y * pdfContentView.bounds.height
+            label.center = CGPoint(x: centerX, y: centerY)
+            pdfImageView.addSubview(label)
+            pdfImageView.bringSubviewToFront(label)
+        }
+    }
+    
     // MARK: - UIScrollViewDelegate
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {
         return pdfContentView
@@ -324,7 +408,26 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         pointCreationTapRecognizer.isEnabled = pointCreationEnabled
     }
     
-    // MARK: - Установка фото-маркера
+    @objc private func togglePolylineMode(_ sender: UIButton) {
+        polylineModeEnabled.toggle()
+        let imageName = polylineModeEnabled ? "broken_line_active" : "broken_line_passive"
+        polylineToggleButton.setImage(UIImage(named: imageName), for: .normal)
+        polylineTapRecognizer.isEnabled = polylineModeEnabled
+        
+        // Если режим выключается, отменяем незавершённую полилинию
+        if !polylineModeEnabled {
+            cancelCurrentPolyline()
+        }
+    }
+    
+    @objc private func toggleTextMode(_ sender: UIButton) {
+        textModeEnabled.toggle()
+        let imageName = textModeEnabled ? "text_active" : "text_passive"
+        textToggleButton.setImage(UIImage(named: imageName), for: .normal)
+        textTapRecognizer.isEnabled = textModeEnabled
+    }
+    
+    // MARK: - Обработка фото-маркеров
     @objc private func handlePhotoMarkerTap(_ sender: UITapGestureRecognizer) {
         let locationInView = sender.location(in: pdfContentView)
         let markerSize: CGFloat = 30.0
@@ -349,11 +452,9 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         presentCamera()
     }
     
-    // MARK: - Обработчик создания точки
+    // MARK: - Обработка создания точки
     @objc private func handlePointCreationTap(_ sender: UITapGestureRecognizer) {
         let location = sender.location(in: pdfContentView)
-       
-        // Создаем визуальное представление точки (например, небольшой круг)
         let markerSize: CGFloat = 10.0
         let markerFrame = CGRect(x: location.x - markerSize/2,
                                  y: location.y - markerSize/2,
@@ -366,14 +467,187 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         pdfImageView.addSubview(pointMarker)
         pdfImageView.bringSubviewToFront(pointMarker)
        
-        // Вычисляем нормализованные координаты для корректного отображения при изменении размеров
         let normalizedX = location.x / pdfContentView.bounds.width
         let normalizedY = location.y / pdfContentView.bounds.height
         let normalizedPoint = CGPoint(x: normalizedX, y: normalizedY)
        
-        // Сохраняем точку в базу данных
         repository.savePoint(forDrawing: drawingId, coordinate: normalizedPoint)
     }
+    
+    // MARK: - Обработка создания полилинии
+    @objc private func handlePolylineTap(_ sender: UITapGestureRecognizer) {
+        let location = sender.location(in: pdfContentView)
+        currentPolylinePoints.append(location)
+        updatePolylineLayer()
+        
+        // При достижении 2 и более точек показываем панель управления полилинией
+        if currentPolylinePoints.count == 2 {
+            showPolylineControlPanel()
+        }
+    }
+    
+    private func updatePolylineLayer() {
+        if currentPolylineLayer == nil {
+            let layer = CAShapeLayer()
+            layer.strokeColor = UIColor.green.cgColor
+            layer.lineWidth = 2.0
+            layer.fillColor = UIColor.clear.cgColor
+            currentPolylineLayer = layer
+            pdfContentView.layer.addSublayer(layer)
+        }
+        let path = UIBezierPath()
+        if let first = currentPolylinePoints.first {
+            path.move(to: first)
+            for point in currentPolylinePoints.dropFirst() {
+                path.addLine(to: point)
+            }
+        }
+        currentPolylineLayer?.path = path.cgPath
+    }
+    
+    private func showPolylineControlPanel() {
+        // Скрываем все кнопки в нижней панели
+        for subview in bottomPanel.subviews {
+            subview.isHidden = true
+        }
+        
+        polylineControlPanel = UIView()
+        polylineControlPanel?.translatesAutoresizingMaskIntoConstraints = false
+        bottomPanel.addSubview(polylineControlPanel!)
+        
+        NSLayoutConstraint.activate([
+            polylineControlPanel!.topAnchor.constraint(equalTo: bottomPanel.topAnchor),
+            polylineControlPanel!.bottomAnchor.constraint(equalTo: bottomPanel.bottomAnchor),
+            polylineControlPanel!.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor),
+            polylineControlPanel!.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor)
+        ])
+        
+        // Создаем 3 кнопки с изображениями: Отмена, Сохранение, Замыкание
+        let cancelButton = UIButton(type: .custom)
+        cancelButton.setImage(UIImage(named: "decline"), for: .normal)
+        cancelButton.addTarget(self, action: #selector(cancelPolylineAction), for: .touchUpInside)
+        cancelButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        let saveButton = UIButton(type: .custom)
+        saveButton.setImage(UIImage(named: "accept"), for: .normal)
+        saveButton.addTarget(self, action: #selector(savePolylineAction), for: .touchUpInside)
+        saveButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        let closeButton = UIButton(type: .custom)
+        closeButton.setImage(UIImage(named: "connect"), for: .normal)
+        closeButton.addTarget(self, action: #selector(closePolylineAction), for: .touchUpInside)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        polylineControlPanel?.addSubview(cancelButton)
+        polylineControlPanel?.addSubview(saveButton)
+        polylineControlPanel?.addSubview(closeButton)
+        
+        NSLayoutConstraint.activate([
+            // Размеры кнопок – 30x30
+            cancelButton.widthAnchor.constraint(equalToConstant: 30),
+            cancelButton.heightAnchor.constraint(equalToConstant: 30),
+            saveButton.widthAnchor.constraint(equalToConstant: 30),
+            saveButton.heightAnchor.constraint(equalToConstant: 30),
+            closeButton.widthAnchor.constraint(equalToConstant: 30),
+            closeButton.heightAnchor.constraint(equalToConstant: 30),
+            
+            // Размещение кнопок по центру панели
+            cancelButton.centerYAnchor.constraint(equalTo: polylineControlPanel!.centerYAnchor),
+            saveButton.centerYAnchor.constraint(equalTo: polylineControlPanel!.centerYAnchor),
+            closeButton.centerYAnchor.constraint(equalTo: polylineControlPanel!.centerYAnchor),
+            
+            cancelButton.leadingAnchor.constraint(equalTo: polylineControlPanel!.leadingAnchor, constant: 20),
+            closeButton.trailingAnchor.constraint(equalTo: polylineControlPanel!.trailingAnchor, constant: -20),
+            saveButton.centerXAnchor.constraint(equalTo: polylineControlPanel!.centerXAnchor)
+        ])
+    }
+    
+    private func hidePolylineControlPanel() {
+        polylineControlPanel?.removeFromSuperview()
+        polylineControlPanel = nil
+        // Восстанавливаем видимость исходных кнопок нижней панели
+        for subview in bottomPanel.subviews {
+            subview.isHidden = false
+        }
+    }
+    
+    // Отключаем режим полилиний – кнопка становится неактивной
+    private func disablePolylineMode() {
+        polylineModeEnabled = false
+        polylineToggleButton.setImage(UIImage(named: "broken_line_passive"), for: .normal)
+        polylineTapRecognizer.isEnabled = false
+    }
+    
+    @objc private func cancelPolylineAction() {
+        cancelCurrentPolyline()
+        hidePolylineControlPanel()
+        disablePolylineMode()
+    }
+    
+    private func cancelCurrentPolyline() {
+        currentPolylineLayer?.removeFromSuperlayer()
+        currentPolylineLayer = nil
+        currentPolylinePoints.removeAll()
+    }
+    
+    @objc private func savePolylineAction() {
+        // Сохраняем полилинию в открытом виде (без замыкания)
+        repository.savePolyline(forDrawing: drawingId, points: currentPolylinePoints, closed: false)
+        cancelCurrentPolyline()
+        hidePolylineControlPanel()
+        disablePolylineMode()
+        loadPolylineMarkers() // Сразу показываем сохранённую полилинию
+    }
+    
+    @objc private func closePolylineAction() {
+        // Добавляем соединение между первой и последней точкой (замыкание)
+        if let first = currentPolylinePoints.first {
+            currentPolylinePoints.append(first)
+            updatePolylineLayer()
+        }
+        repository.savePolyline(forDrawing: drawingId, points: currentPolylinePoints, closed: true)
+        cancelCurrentPolyline()
+        hidePolylineControlPanel()
+        disablePolylineMode()
+        loadPolylineMarkers() // Сразу показываем сохранённую полилинию
+    }
+    
+    // MARK: - Обработка ввода текста
+    @objc private func handleTextTap(_ sender: UITapGestureRecognizer) {
+        let location = sender.location(in: pdfContentView)
+        // Показываем alert с текстовым полем для ввода
+        let alert = UIAlertController(title: "Введите текст", message: nil, preferredStyle: .alert)
+        alert.addTextField { (textField) in
+            textField.placeholder = "Ваш текст"
+        }
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: "ОК", style: .default, handler: { [weak self] _ in
+            guard let self = self, let text = alert.textFields?.first?.text, !text.isEmpty else { return }
+            // Создаем метку с введенным текстом
+            let label = UILabel()
+            label.text = text
+            label.textColor = .blue
+            label.backgroundColor = UIColor.white.withAlphaComponent(0.7)
+            label.sizeToFit()
+            label.center = location
+            self.pdfImageView.addSubview(label)
+            self.pdfImageView.bringSubviewToFront(label)
+            
+            // Сохраняем координаты текста в нормализованном виде
+            let normalizedX = location.x / self.pdfContentView.bounds.width
+            let normalizedY = location.y / self.pdfContentView.bounds.height
+            let normalizedPoint = CGPoint(x: normalizedX, y: normalizedY)
+            self.repository.saveText(forDrawing: self.drawingId, text: text, coordinate: normalizedPoint)
+        }))
+        present(alert, animated: true, completion: nil)
+    }
+    
+//    @objc private func toggleTextMode(_ sender: UIButton) {
+//        textModeEnabled.toggle()
+//        let imageName = textModeEnabled ? "text_active" : "text_passive"
+//        textToggleButton.setImage(UIImage(named: imageName), for: .normal)
+//        textTapRecognizer.isEnabled = textModeEnabled
+//    }
     
     // MARK: - Работа с камерой
     private func presentCamera() {
@@ -439,7 +713,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         ])
         
         let closeButton = UIButton(type: .system)
-        closeButton.setTitle("Закрыть", for: .normal)
+        closeButton.setImage(UIImage(named: "close_icon"), for: .normal)
         closeButton.tintColor = .white
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         closeButton.addTarget(self, action: #selector(dismissPhotoVC), for: .touchUpInside)
@@ -450,7 +724,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         ])
         
         let deleteButton = UIButton(type: .system)
-        deleteButton.setTitle("Удалить", for: .normal)
+        deleteButton.setImage(UIImage(named: "delete_icon"), for: .normal)
         deleteButton.tintColor = .red
         deleteButton.translatesAutoresizingMaskIntoConstraints = false
         deleteButton.addTarget(self, action: #selector(deletePhotoMarkerAction(_:)), for: .touchUpInside)
@@ -532,6 +806,23 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             pdfImageView.bringSubviewToFront(marker)
         }
     }
+    
+    // MARK: - Загрузка текстовых меток
+//    private func loadTextMarkers() {
+//        let texts = repository.loadTexts(forDrawing: drawingId)
+//        for textMarker in texts {
+//            let label = UILabel()
+//            label.text = textMarker.text
+//            label.textColor = .black
+//            label.backgroundColor = UIColor.white.withAlphaComponent(0.7)
+//            label.sizeToFit()
+//            let centerX = textMarker.coordinate.x * pdfContentView.bounds.width
+//            let centerY = textMarker.coordinate.y * pdfContentView.bounds.height
+//            label.center = CGPoint(x: centerX, y: centerY)
+//            pdfImageView.addSubview(label)
+//            pdfImageView.bringSubviewToFront(label)
+//        }
+//    }
     
     @objc private func deletePhotoMarkerAction(_ sender: UIButton) {
         guard let marker = currentViewingMarker, let markerId = marker.photoEntityId else { return }

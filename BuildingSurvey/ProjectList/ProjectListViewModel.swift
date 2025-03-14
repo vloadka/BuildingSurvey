@@ -34,10 +34,6 @@ class ProjectListViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-//    // Метод для добавления проекта
-//    func addProject(name: String) {
-//        repository.addProject(name: name)
-//    }
     
     func deleteProject(id: UUID) {
         repository.deleteProject(id: id)
