@@ -240,4 +240,38 @@ class GeneralRepository: ObservableObject {
             print("Ошибка удаления фото-маркера: \(error)")
         }
     }
+    
+    func savePoint(forDrawing drawingId: UUID, withId id: UUID = UUID(), coordinate: CGPoint) {
+            let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+            do {
+                if let drawing = try context.fetch(fetchRequest).first {
+                    let pointEntity = PointEntity(context: context)
+                    pointEntity.id = id
+                    pointEntity.coordinateX = coordinate.x
+                    pointEntity.coordinateY = coordinate.y
+                    pointEntity.drawing = drawing
+                    saveContext()
+                } else {
+                    print("Ошибка: Чертеж с id \(drawingId) не найден.")
+                }
+            } catch {
+                print("Ошибка сохранения точки: \(error)")
+            }
+        }
+
+        func loadPoints(forDrawing drawingId: UUID) -> [PointMarkerData] {
+            let fetchRequest: NSFetchRequest<PointEntity> = PointEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
+            do {
+                let pointEntities = try context.fetch(fetchRequest)
+                return pointEntities.compactMap { point in
+                    guard let id = point.id else { return nil }
+                    return PointMarkerData(id: id, coordinate: CGPoint(x: point.coordinateX, y: point.coordinateY))
+                }
+            } catch {
+                print("Ошибка загрузки точек: \(error)")
+                return []
+            }
+        }
 }

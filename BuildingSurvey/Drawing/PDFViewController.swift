@@ -21,6 +21,11 @@ struct PhotoMarkerData {
     let coordinate: CGPoint
 }
 
+struct PointMarkerData {
+    let id: UUID
+    let coordinate: CGPoint  // координаты хранятся в нормализованном виде (0...1)
+}
+
 class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate {
     private let pdfURL: URL
     private let drawingId: UUID
@@ -51,6 +56,11 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     // Флаг, чтобы маркеры загружались только один раз после установки размеров
     private var markersLoaded = false
     
+    // Новые свойства для режима создания точек
+    private var pointToggleButton: UIButton!
+    private var pointCreationEnabled: Bool = false
+    private var pointCreationTapRecognizer: UITapGestureRecognizer!
+    
     // Ключ для сохранения зума в UserDefaults
     private var zoomScaleKey: String {
         return "pdfZoomScale_\(drawingId.uuidString)"
@@ -78,6 +88,11 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         setupButtons()
         setupPhotoMarkerTapRecognizer()
         
+        // Настройка распознавателя для создания точек
+        pointCreationTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handlePointCreationTap(_:)))
+        pointCreationTapRecognizer.isEnabled = false
+        pdfContentView.addGestureRecognizer(pointCreationTapRecognizer)
+        
         loadSavedLines()
         // Загрузка маркеров происходит в viewDidLayoutSubviews, когда размеры установлены
     }
@@ -102,6 +117,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         if !markersLoaded {
             pdfContentView.layoutIfNeeded()
             loadPhotoMarkers()
+            loadPointMarkers()
             markersLoaded = true
         }
     }
@@ -211,6 +227,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func setupButtons() {
+        // Кнопка для рисования линий
         drawingToggleButton = UIButton(type: .custom)
         drawingToggleButton.translatesAutoresizingMaskIntoConstraints = false
         drawingToggleButton.setImage(UIImage(named: "Line_passive"), for: .normal)
@@ -222,6 +239,20 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             drawingToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
             drawingToggleButton.heightAnchor.constraint(equalToConstant: 44),
             drawingToggleButton.widthAnchor.constraint(equalToConstant: 44)
+        ])
+        
+        // Кнопка для создания точек
+        pointToggleButton = UIButton(type: .custom)
+        pointToggleButton.translatesAutoresizingMaskIntoConstraints = false
+        pointToggleButton.setImage(UIImage(named: "point_defect_passive"), for: .normal)
+        pointToggleButton.addTarget(self, action: #selector(togglePointMode(_:)), for: .touchUpInside)
+        bottomPanel.addSubview(pointToggleButton)
+        
+        NSLayoutConstraint.activate([
+            pointToggleButton.trailingAnchor.constraint(equalTo: drawingToggleButton.leadingAnchor, constant: -20),
+            pointToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
+            pointToggleButton.heightAnchor.constraint(equalToConstant: 44),
+            pointToggleButton.widthAnchor.constraint(equalToConstant: 44)
         ])
         
         let topIconButton = UIButton(type: .custom)
@@ -286,6 +317,13 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         photoMarkerTapRecognizer.isEnabled = topButtonActive
     }
     
+    @objc private func togglePointMode(_ sender: UIButton) {
+        pointCreationEnabled.toggle()
+        let imageName = pointCreationEnabled ? "point_defect_active" : "point_defect_passive"
+        pointToggleButton.setImage(UIImage(named: imageName), for: .normal)
+        pointCreationTapRecognizer.isEnabled = pointCreationEnabled
+    }
+    
     // MARK: - Установка фото-маркера
     @objc private func handlePhotoMarkerTap(_ sender: UITapGestureRecognizer) {
         let locationInView = sender.location(in: pdfContentView)
@@ -309,6 +347,32 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         currentPhotoMarker = markerButton
         photoMarkerTapRecognizer.isEnabled = false
         presentCamera()
+    }
+    
+    // MARK: - Обработчик создания точки
+    @objc private func handlePointCreationTap(_ sender: UITapGestureRecognizer) {
+        let location = sender.location(in: pdfContentView)
+       
+        // Создаем визуальное представление точки (например, небольшой круг)
+        let markerSize: CGFloat = 10.0
+        let markerFrame = CGRect(x: location.x - markerSize/2,
+                                 y: location.y - markerSize/2,
+                                 width: markerSize,
+                                 height: markerSize)
+        let pointMarker = UIButton(frame: markerFrame)
+        pointMarker.backgroundColor = .blue
+        pointMarker.layer.cornerRadius = markerSize / 2
+        pointMarker.clipsToBounds = true
+        pdfImageView.addSubview(pointMarker)
+        pdfImageView.bringSubviewToFront(pointMarker)
+       
+        // Вычисляем нормализованные координаты для корректного отображения при изменении размеров
+        let normalizedX = location.x / pdfContentView.bounds.width
+        let normalizedY = location.y / pdfContentView.bounds.height
+        let normalizedPoint = CGPoint(x: normalizedX, y: normalizedY)
+       
+        // Сохраняем точку в базу данных
+        repository.savePoint(forDrawing: drawingId, coordinate: normalizedPoint)
     }
     
     // MARK: - Работа с камерой
@@ -446,6 +510,26 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             
             pdfImageView.addSubview(markerButton)
             pdfImageView.bringSubviewToFront(markerButton)
+        }
+    }
+    
+    // MARK: - Загрузка точек
+    private func loadPointMarkers() {
+        let points = repository.loadPoints(forDrawing: drawingId)
+        let markerSize: CGFloat = 10.0
+        
+        for pointData in points {
+            let marker = UIButton(frame: CGRect(x: 0, y: 0, width: markerSize, height: markerSize))
+            marker.backgroundColor = .blue
+            marker.layer.cornerRadius = markerSize / 2
+            marker.clipsToBounds = true
+            
+            let centerX = pointData.coordinate.x * pdfContentView.bounds.width
+            let centerY = pointData.coordinate.y * pdfContentView.bounds.height
+            marker.center = CGPoint(x: centerX, y: centerY)
+            
+            pdfImageView.addSubview(marker)
+            pdfImageView.bringSubviewToFront(marker)
         }
     }
     
