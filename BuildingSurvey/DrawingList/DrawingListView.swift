@@ -86,12 +86,19 @@ struct DrawingListView: View {
             )
         }
         .background(
-            NavigationLink(destination: PDFViewer(pdfURL: URL(fileURLWithPath: selectedDrawing?.filePath ?? ""), drawingId: selectedDrawing?.id ?? UUID(), repository: GeneralRepository())
-                .navigationTitle(selectedDrawing?.name ?? "") // Устанавливаем заголовок навигационной панели
-            , isActive: Binding(
-                get: { selectedDrawing != nil },
-                set: { if !$0 { selectedDrawing = nil } }
-            )) {
+            NavigationLink(
+                destination: PDFViewer(
+                    pdfURL: URL(fileURLWithPath: selectedDrawing?.filePath ?? ""),
+                    drawingId: selectedDrawing?.id ?? UUID(),
+                    repository: GeneralRepository(),
+                    project: project    // Используем экземпляр проекта, а не тип
+                )
+                .navigationTitle(selectedDrawing?.name ?? ""),
+                isActive: Binding(
+                    get: { selectedDrawing != nil },
+                    set: { if !$0 { selectedDrawing = nil } }
+                )
+            ) {
                 EmptyView()
             }
         )

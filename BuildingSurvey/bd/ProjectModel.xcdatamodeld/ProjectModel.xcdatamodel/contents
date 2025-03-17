@@ -11,6 +11,13 @@
         <relationship name="project" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ProjectEntity" inverseName="drawings" inverseEntity="ProjectEntity"/>
         <relationship name="text" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TextEntity" inverseName="drawing" inverseEntity="TextEntity"/>
     </entity>
+    <entity name="LayerEntity" representedClassName="LayerEntity" syncable="YES">
+        <attribute name="colorHex" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="project" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ProjectEntity" inverseName="layers" inverseEntity="ProjectEntity"/>
+    </entity>
     <entity name="LineEntity" representedClassName="LineEntity" syncable="YES">
         <attribute name="endX" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="endY" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
@@ -46,6 +53,7 @@
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="projectFilePath" optional="YES" attributeType="String"/>
         <relationship name="drawings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="project" inverseEntity="DrawingEntity"/>
+        <relationship name="layers" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LayerEntity" inverseName="project" inverseEntity="LayerEntity"/>
     </entity>
     <entity name="TextEntity" representedClassName="TextEntity" syncable="YES">
         <attribute name="coordinateX" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>

@@ -37,6 +37,11 @@ struct TextMarkerData {
     let text: String
     let coordinate: CGPoint
 }
+struct LayerData {
+    let id: UUID
+    let name: String
+    let color: UIColor
+}
 
 class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate {
     // Исходные свойства
@@ -85,12 +90,15 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         return "pdfZoomScale_\(drawingId.uuidString)"
     }
     
-    init(pdfURL: URL, drawingId: UUID, repository: GeneralRepository) {
-        self.pdfURL = pdfURL
-        self.drawingId = drawingId
-        self.repository = repository
-        super.init(nibName: nil, bundle: nil)
-    }
+    private let project: Project // или ProjectEntity, если вы работаете с сущностями Core Data
+        
+        init(pdfURL: URL, drawingId: UUID, repository: GeneralRepository, project: Project) {
+            self.pdfURL = pdfURL
+            self.drawingId = drawingId
+            self.repository = repository
+            self.project = project
+            super.init(nibName: nil, bundle: nil)
+        }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -278,8 +286,17 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         textToggleButton.addTarget(self, action: #selector(toggleTextMode(_:)), for: .touchUpInside)
         bottomPanel.addSubview(textToggleButton)
         
+        // Кнопка для работы со слоями
+          setupLayerButton()
+        
         // Располагаем кнопки горизонтально: [text] - [polyline] - [drawing] - [point]
         NSLayoutConstraint.activate([
+            
+            layerButton.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 16),
+                   layerButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
+                   layerButton.widthAnchor.constraint(equalToConstant: 30),
+                   layerButton.heightAnchor.constraint(equalToConstant: 30),
+            
             drawingToggleButton.centerXAnchor.constraint(equalTo: bottomPanel.centerXAnchor),
             drawingToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
             drawingToggleButton.heightAnchor.constraint(equalToConstant: 44),
@@ -386,39 +403,39 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         UserDefaults.standard.set(Float(scale), forKey: zoomScaleKey)
     }
     
-    // MARK: - Режимы работы
-    @objc private func toggleDrawingMode(_ sender: UIButton) {
-        drawingEnabled.toggle()
-        drawingView.isUserInteractionEnabled = drawingEnabled
-        let imageName = drawingEnabled ? "Line_active" : "Line_passive"
-        drawingToggleButton.setImage(UIImage(named: imageName), for: .normal)
-    }
-    
-    @objc private func toggleTopButtonMode(_ sender: UIButton) {
-        topButtonActive.toggle()
-        let imageName = topButtonActive ? "Photo_active_1" : "Photo_passive_1"
-        topToggleButton.setImage(UIImage(named: imageName), for: .normal)
-        photoMarkerTapRecognizer.isEnabled = topButtonActive
-    }
-    
-    @objc private func togglePointMode(_ sender: UIButton) {
-        pointCreationEnabled.toggle()
-        let imageName = pointCreationEnabled ? "point_defect_active" : "point_defect_passive"
-        pointToggleButton.setImage(UIImage(named: imageName), for: .normal)
-        pointCreationTapRecognizer.isEnabled = pointCreationEnabled
-    }
-    
-    @objc private func togglePolylineMode(_ sender: UIButton) {
-        polylineModeEnabled.toggle()
-        let imageName = polylineModeEnabled ? "broken_line_active" : "broken_line_passive"
-        polylineToggleButton.setImage(UIImage(named: imageName), for: .normal)
-        polylineTapRecognizer.isEnabled = polylineModeEnabled
-        
-        // Если режим выключается, отменяем незавершённую полилинию
-        if !polylineModeEnabled {
-            cancelCurrentPolyline()
+        // MARK: - Режимы работы
+        @objc private func toggleDrawingMode(_ sender: UIButton) {
+            drawingEnabled.toggle()
+            drawingView.isUserInteractionEnabled = drawingEnabled
+            let imageName = drawingEnabled ? "Line_active" : "Line_passive"
+            drawingToggleButton.setImage(UIImage(named: imageName), for: .normal)
         }
-    }
+        
+        @objc private func toggleTopButtonMode(_ sender: UIButton) {
+            topButtonActive.toggle()
+            let imageName = topButtonActive ? "Photo_active_1" : "Photo_passive_1"
+            topToggleButton.setImage(UIImage(named: imageName), for: .normal)
+            photoMarkerTapRecognizer.isEnabled = topButtonActive
+        }
+        
+        @objc private func togglePointMode(_ sender: UIButton) {
+            pointCreationEnabled.toggle()
+            let imageName = pointCreationEnabled ? "point_defect_active" : "point_defect_passive"
+            pointToggleButton.setImage(UIImage(named: imageName), for: .normal)
+            pointCreationTapRecognizer.isEnabled = pointCreationEnabled
+        }
+        
+        @objc private func togglePolylineMode(_ sender: UIButton) {
+            polylineModeEnabled.toggle()
+            let imageName = polylineModeEnabled ? "broken_line_active" : "broken_line_passive"
+            polylineToggleButton.setImage(UIImage(named: imageName), for: .normal)
+            polylineTapRecognizer.isEnabled = polylineModeEnabled
+            
+            // Если режим выключается, отменяем незавершённую полилинию
+            if !polylineModeEnabled {
+                cancelCurrentPolyline()
+            }
+        }
     
     @objc private func toggleTextMode(_ sender: UIButton) {
         textModeEnabled.toggle()
@@ -829,5 +846,251 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         repository.deletePhotoMarker(withId: markerId)
         marker.removeFromSuperview()
         dismiss(animated: true)
+    }
+    
+    
+    
+    
+    
+    
+    
+    private var layerButton: UIButton! {
+        get { return objc_getAssociatedObject(self, &AssociatedKeys.layerButton) as? UIButton }
+        set { objc_setAssociatedObject(self, &AssociatedKeys.layerButton, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+    }
+    private var layerDropdownView: UIView? {
+        get { return objc_getAssociatedObject(self, &AssociatedKeys.layerDropdownView) as? UIView }
+        set { objc_setAssociatedObject(self, &AssociatedKeys.layerDropdownView, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+    }
+    private var activeLayer: LayerData? {
+        get { return objc_getAssociatedObject(self, &AssociatedKeys.activeLayer) as? LayerData }
+        set { objc_setAssociatedObject(self, &AssociatedKeys.activeLayer, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+    }
+    private var layers: [LayerData] {
+        get { return objc_getAssociatedObject(self, &AssociatedKeys.layers) as? [LayerData] ?? [] }
+        set { objc_setAssociatedObject(self, &AssociatedKeys.layers, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+    }
+
+    
+    private struct AssociatedKeys {
+        static var layerButton: UInt8 = 0
+        static var layerDropdownView: UInt8 = 0
+        static var activeLayer: UInt8 = 0
+        static var layers: UInt8 = 0
+    }
+    
+    // Вызываем этот метод в viewDidLoad()
+    func setupLayerButton() {
+        layerButton = UIButton(type: .custom)
+        layerButton.translatesAutoresizingMaskIntoConstraints = false
+        layerButton.setImage(UIImage(named: "circle"), for: .normal) // Добавьте PNG-иконку для слоя
+        layerButton.addTarget(self, action: #selector(toggleLayerDropdown), for: .touchUpInside)
+        bottomPanel.addSubview(layerButton)
+        
+        // Пример размещения: слева на нижней панели
+        NSLayoutConstraint.activate([
+            layerButton.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 16),
+            layerButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
+            layerButton.widthAnchor.constraint(equalToConstant: 30),
+            layerButton.heightAnchor.constraint(equalToConstant: 30)
+        ])
+    }
+    
+    @objc private func toggleLayerDropdown() {
+        if layerDropdownView == nil {
+            showLayerDropdown()
+        } else {
+            hideLayerDropdown()
+        }
+    }
+    
+    private func showLayerDropdown() {
+        // Получаем слои (LayerEntity) из репозитория
+        let layerEntities = repository.loadLayers(forProject: project)
+        // Преобразуем LayerEntity в LayerData
+        layers = layerEntities.map { entity in
+            LayerData(
+                id: entity.id ?? UUID(),
+                name: entity.name ?? "",
+                color: entity.uiColor ?? .black
+            )
+        }
+        
+        // Если слой с названием "0" отсутствует, добавляем его по умолчанию
+        if !layers.contains(where: { $0.name == "0" }) {
+            let defaultLayer = LayerData(id: UUID(), name: "0", color: .black)
+            layers.insert(defaultLayer, at: 0)
+            repository.saveLayer(forProject: project, layer: defaultLayer)
+        }
+        
+        let dropdown = UIView()
+        dropdown.translatesAutoresizingMaskIntoConstraints = false
+        dropdown.backgroundColor = UIColor.white
+        dropdown.layer.borderWidth = 1.0
+        dropdown.layer.borderColor = UIColor.gray.cgColor
+        dropdown.layer.cornerRadius = 5.0
+        view.addSubview(dropdown)
+        self.layerDropdownView = dropdown
+        
+        // Расположим dropdown чуть выше нижней панели
+        NSLayoutConstraint.activate([
+            dropdown.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 16),
+            dropdown.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -16),
+            dropdown.bottomAnchor.constraint(equalTo: bottomPanel.topAnchor, constant: -8)
+        ])
+        
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 8
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        dropdown.addSubview(stackView)
+        NSLayoutConstraint.activate([
+            stackView.topAnchor.constraint(equalTo: dropdown.topAnchor, constant: 8),
+            stackView.bottomAnchor.constraint(equalTo: dropdown.bottomAnchor, constant: -8),
+            stackView.leadingAnchor.constraint(equalTo: dropdown.leadingAnchor, constant: 8),
+            stackView.trailingAnchor.constraint(equalTo: dropdown.trailingAnchor, constant: -8)
+        ])
+        
+        // Для каждого слоя создаём ячейку
+        for (index, layer) in layers.enumerated() {
+            let layerCell = createLayerCell(for: layer)
+            layerCell.tag = index // Используем tag для идентификации ячейки
+            let tap = UITapGestureRecognizer(target: self, action: #selector(layerCellTapped(_:)))
+            layerCell.addGestureRecognizer(tap)
+            stackView.addArrangedSubview(layerCell)
+        }
+        
+        // Добавляем кнопку "Добавить слой"
+        let addLayerButton = UIButton(type: .system)
+        addLayerButton.setTitle("Добавить слой", for: .normal)
+        addLayerButton.addTarget(self, action: #selector(addLayerButtonTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(addLayerButton)
+    }
+
+    
+    private func hideLayerDropdown() {
+        layerDropdownView?.removeFromSuperview()
+        layerDropdownView = nil
+    }
+    
+    private func createLayerCell(for layer: LayerData) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let hStack = UIStackView()
+        hStack.axis = .horizontal
+        hStack.spacing = 8
+        hStack.alignment = .center
+        hStack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(hStack)
+        NSLayoutConstraint.activate([
+            hStack.topAnchor.constraint(equalTo: container.topAnchor),
+            hStack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            hStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            hStack.trailingAnchor.constraint(equalTo: container.trailingAnchor)
+        ])
+
+        // Название слоя слева
+        let nameLabel = UILabel()
+        nameLabel.text = layer.name
+        hStack.addArrangedSubview(nameLabel)
+
+        // Добавляем спейсер, чтобы элементы справа прижались к краю
+        let spacer = UIView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        hStack.addArrangedSubview(spacer)
+        
+        // Ограничиваем ширину спейсера, чтобы он занимал всё доступное пространство
+        NSLayoutConstraint.activate([
+            spacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 0)
+        ])
+
+        // Круг, показывающий выбранный цвет
+        let colorView = UIView()
+        colorView.backgroundColor = layer.color
+        colorView.layer.cornerRadius = 10
+        colorView.clipsToBounds = true
+        colorView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            colorView.widthAnchor.constraint(equalToConstant: 20),
+            colorView.heightAnchor.constraint(equalToConstant: 20)
+        ])
+        hStack.addArrangedSubview(colorView)
+        
+        // Кнопка удаления
+        let deleteButton = UIButton(type: .custom)
+        deleteButton.setImage(UIImage(named: "decline"), for: .normal)
+        deleteButton.accessibilityIdentifier = layer.id.uuidString
+        deleteButton.addTarget(self, action: #selector(deleteLayerButtonTapped(_:)), for: .touchUpInside)
+        deleteButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            deleteButton.widthAnchor.constraint(equalToConstant: 20),
+            deleteButton.heightAnchor.constraint(equalToConstant: 20)
+        ])
+        hStack.addArrangedSubview(deleteButton)
+        
+        return container
+    }
+
+    
+    @objc private func layerCellTapped(_ gesture: UITapGestureRecognizer) {
+        if let cell = gesture.view {
+            let index = cell.tag
+            if index < layers.count {
+                let selected = layers[index]
+                activeLayer = selected
+                // Здесь можно обновить UI (например, подсветить активную ячейку)
+                // и передать активный цвет в инструменты рисования:
+                // drawingView.currentColor = activeLayer?.color ?? UIColor.black
+                hideLayerDropdown()
+            }
+        }
+    }
+    
+//    @objc private func addLayerButtonTapped() {
+//        let alert = UIAlertController(title: "Добавить слой", message: nil, preferredStyle: .alert)
+//        alert.addTextField { textField in
+//            textField.placeholder = "Название слоя"
+//        }
+//        // Для простоты предлагаем два варианта выбора цвета (расширять можно с помощью кастомного UI)
+//        alert.addAction(UIAlertAction(title: "Черный", style: .default, handler: { _ in
+//            self.saveNewLayer(from: alert, withColor: .black)
+//        }))
+//        alert.addAction(UIAlertAction(title: "Красный", style: .default, handler: { _ in
+//            self.saveNewLayer(from: alert, withColor: .red)
+//        }))
+//        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel, handler: nil))
+//        present(alert, animated: true)
+//    }
+    
+    private func saveNewLayer(from alert: UIAlertController, withColor color: UIColor) {
+        guard let name = alert.textFields?.first?.text, !name.isEmpty else { return }
+        let newLayer = LayerData(id: UUID(), name: name, color: color)
+        repository.saveLayer(forProject: project, layer: newLayer)
+        // Обновляем список слоев
+        hideLayerDropdown()
+        showLayerDropdown()
+    }
+    
+    @objc private func deleteLayerButtonTapped(_ sender: UIButton) {
+        guard let idString = sender.accessibilityIdentifier, let id = UUID(uuidString: idString) else { return }
+        repository.deleteLayer(withId: id)
+        hideLayerDropdown()
+        showLayerDropdown()
+    }
+    
+    
+    // Внутри PDFViewController.swift
+    @objc private func addLayerButtonTapped() {
+        let addLayerVC = AddLayerViewController()
+        addLayerVC.modalPresentationStyle = .formSheet
+        addLayerVC.completion = { [weak self] name, color in
+             guard let self = self else { return }
+             let newLayer = LayerData(id: UUID(), name: name, color: color)
+             self.repository.saveLayer(forProject: self.project, layer: newLayer)
+             self.hideLayerDropdown()
+             self.showLayerDropdown()
+        }
+        present(addLayerVC, animated: true, completion: nil)
     }
 }

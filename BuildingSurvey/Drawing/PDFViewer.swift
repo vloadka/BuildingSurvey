@@ -12,9 +12,10 @@ struct PDFViewer: UIViewControllerRepresentable {
     let pdfURL: URL
     let drawingId: UUID
     let repository: GeneralRepository
+    let project: Project  // добавляем проект
 
     func makeUIViewController(context: Context) -> PDFViewController {
-        let vc = PDFViewController(pdfURL: pdfURL, drawingId: drawingId, repository: repository)
+        let vc = PDFViewController(pdfURL: pdfURL, drawingId: drawingId, repository: repository, project: project)
         return vc
     }
 

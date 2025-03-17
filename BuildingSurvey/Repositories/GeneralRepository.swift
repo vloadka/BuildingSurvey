@@ -391,6 +391,108 @@ class GeneralRepository: ObservableObject {
         return nil
     }
 
+    // Загрузка слоёв для заданного проекта
+    func loadLayers(forProject project: Project) -> [LayerEntity] {
+        let fetchRequest: NSFetchRequest<LayerEntity> = LayerEntity.fetchRequest()
+        // Предполагается, что ProjectEntity имеет атрибут id
+        fetchRequest.predicate = NSPredicate(format: "project.id == %@", project.id as CVarArg)
+        
+        do {
+            let layers = try context.fetch(fetchRequest)
+            return layers
+        } catch {
+            print("Ошибка загрузки слоёв: \(error)")
+            return []
+        }
+    }
+    
+    // Сохранение нового слоя для заданного проекта.
+    // Здесь передаются название и цвет слоя.
+    func saveLayer(forProject project: Project, layer: LayerData) {
+            let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "id == %@", project.id as CVarArg)
+            
+            do {
+                if let projectEntity = try context.fetch(fetchRequest).first {
+                    let newLayer = LayerEntity(context: context)
+                    newLayer.id = layer.id
+                    newLayer.name = layer.name
+                    newLayer.colorHex = layer.color.toHex()
+                    newLayer.timestamp = Date()
+                    newLayer.setValue(projectEntity, forKey: "project")
+                    saveContext()
+                } else {
+                    print("Ошибка: проект не найден при сохранении слоя")
+                }
+            } catch {
+                print("Ошибка сохранения слоя: \(error)")
+            }
+        }
+    
+    // Удаление слоя по его идентификатору
+    func deleteLayer(withId id: UUID) {
+        let fetchRequest: NSFetchRequest<LayerEntity> = LayerEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        
+        do {
+            if let layer = try context.fetch(fetchRequest).first {
+                context.delete(layer)
+                saveContext()
+            }
+        } catch {
+            print("Ошибка удаления слоя: \(error)")
+        }
+    }
+}
 
 
+extension UIColor {
+    convenience init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+        
+        var rgb: UInt64 = 0
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
+        
+        let length = hexSanitized.count
+        var r, g, b, a: UInt64
+        switch length {
+        case 6: // RRGGBB
+            (r, g, b, a) = (rgb >> 16 & 0xFF, rgb >> 8 & 0xFF, rgb & 0xFF, 255)
+        case 8: // RRGGBBAA
+            (r, g, b, a) = (rgb >> 24 & 0xFF, rgb >> 16 & 0xFF, rgb >> 8 & 0xFF, rgb & 0xFF)
+        default:
+            return nil
+        }
+        
+        self.init(red: CGFloat(r) / 255,
+                  green: CGFloat(g) / 255,
+                  blue: CGFloat(b) / 255,
+                  alpha: CGFloat(a) / 255)
+    }
+    
+    func toHex(alpha: Bool = false) -> String? {
+        guard let components = cgColor.components, components.count >= 3 else { return nil }
+        
+        let r = Float(components[0])
+        let g = Float(components[1])
+        let b = Float(components[2])
+        var a = Float(1.0)
+        if components.count >= 4 {
+            a = Float(components[3])
+        }
+        
+        if alpha {
+            return String(format: "#%02lX%02lX%02lX%02lX",
+                          lroundf(r * 255),
+                          lroundf(g * 255),
+                          lroundf(b * 255),
+                          lroundf(a * 255))
+        } else {
+            return String(format: "#%02lX%02lX%02lX",
+                          lroundf(r * 255),
+                          lroundf(g * 255),
+                          lroundf(b * 255))
+        }
+    }
 }
