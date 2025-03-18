@@ -471,6 +471,8 @@ extension UIColor {
                   alpha: CGFloat(a) / 255)
     }
     
+    
+    
     func toHex(alpha: Bool = false) -> String? {
         guard let components = cgColor.components, components.count >= 3 else { return nil }
         

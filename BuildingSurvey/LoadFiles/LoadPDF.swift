@@ -49,34 +49,27 @@ struct LoadPDF: UIViewControllerRepresentable {
 
             do {
                 let fileManager = FileManager.default
-                let projectFolder = self.getProjectFolder()
+                let projectFolder = getProjectFolder()
                 
                 if !fileManager.fileExists(atPath: projectFolder.path) {
                     try fileManager.createDirectory(at: projectFolder, withIntermediateDirectories: true)
                 }
-
-                let destinationURL = projectFolder.appendingPathComponent("single_page.pdf")
-
-                // Создание одностраничного PDF
-                if let document = PDFDocument(url: selectedFileURL),
-                   let firstPage = document.page(at: 0) {
-
-                    let newDocument = PDFDocument()
-                    newDocument.insert(firstPage, at: 0)
-
-                    if newDocument.write(to: destinationURL) {
-                        print("Сохранён одностраничный PDF: \(destinationURL.path)")
-                        
-                        DispatchQueue.main.async {
-                            self.parent.selectedPDF = destinationURL
-                            self.parent.fileName = "single_page.pdf"
-                        }
-                    } else {
-                        print("Ошибка сохранения одностраничного PDF")
-                        DispatchQueue.main.async {
-                            self.parent.showError = true
-                        }
-                    }
+                
+                // Копируем оригинальный PDF в папку проекта с его исходным именем
+                let destinationURL = projectFolder.appendingPathComponent(selectedFileURL.lastPathComponent)
+                
+                // Если файл с таким именем уже существует, удаляем его
+                if fileManager.fileExists(atPath: destinationURL.path) {
+                    try fileManager.removeItem(at: destinationURL)
+                }
+                
+                try fileManager.copyItem(at: selectedFileURL, to: destinationURL)
+                
+                print("Файл скопирован в: \(destinationURL.path)")
+                
+                DispatchQueue.main.async {
+                    self.parent.selectedPDF = destinationURL
+                    self.parent.fileName = selectedFileURL.lastPathComponent
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -93,3 +86,4 @@ struct LoadPDF: UIViewControllerRepresentable {
         }
     }
 }
+

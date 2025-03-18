@@ -28,6 +28,7 @@ extension LayerEntity {
     // Вспомогательное свойство для получения UIColor из colorHex
     public var uiColor: UIColor? {
         guard let hex = colorHex else { return nil }
-        return UIColor(named: hex)
+        return UIColor(hex: hex)
     }
+
 }

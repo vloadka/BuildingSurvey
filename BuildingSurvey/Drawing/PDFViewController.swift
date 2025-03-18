@@ -135,7 +135,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
-        // Настройка зума для PDF
         let scrollSize = pdfScrollView.bounds.size
         let contentSize = pdfContentView.bounds.size
         if contentSize.width > 0 && contentSize.height > 0 {
@@ -143,9 +142,18 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             let heightScale = scrollSize.height / contentSize.height
             let minScale = min(widthScale, heightScale)
             pdfScrollView.minimumZoomScale = minScale
-            if pdfScrollView.zoomScale < minScale {
-                pdfScrollView.zoomScale = minScale
+            
+            // Задаём желаемый масштаб 60% (0.6),
+            // если сохранённого значения нет.
+            let defaultScale: CGFloat = 0.5
+            let initialScale: CGFloat
+            if let saved = UserDefaults.standard.value(forKey: zoomScaleKey) as? Float, saved > 0 {
+                initialScale = CGFloat(saved)
+            } else {
+                // Если defaultScale меньше минимального, принудительно используем minScale.
+                initialScale = defaultScale >= minScale ? defaultScale : minScale
             }
+            pdfScrollView.zoomScale = initialScale
         }
         
         if bottomPanel.subviews.count > 0 && pdfContentView.bounds.size != .zero {
@@ -155,6 +163,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             loadTextMarkers()
         }
     }
+
     
     // MARK: - Настройка интерфейса
     private func setupPanels() {
@@ -384,7 +393,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             let label = UILabel()
             label.text = textMarker.text
             label.textColor = .blue
-            label.backgroundColor = UIColor.white.withAlphaComponent(0.7)
+            label.backgroundColor = .clear
             label.sizeToFit()
             let centerX = textMarker.coordinate.x * pdfContentView.bounds.width
             let centerY = textMarker.coordinate.y * pdfContentView.bounds.height
@@ -644,7 +653,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             let label = UILabel()
             label.text = text
             label.textColor = .blue
-            label.backgroundColor = UIColor.white.withAlphaComponent(0.7)
+            label.backgroundColor = .clear
             label.sizeToFit()
             label.center = location
             self.pdfImageView.addSubview(label)
@@ -659,12 +668,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         present(alert, animated: true, completion: nil)
     }
     
-//    @objc private func toggleTextMode(_ sender: UIButton) {
-//        textModeEnabled.toggle()
-//        let imageName = textModeEnabled ? "text_active" : "text_passive"
-//        textToggleButton.setImage(UIImage(named: imageName), for: .normal)
-//        textTapRecognizer.isEnabled = textModeEnabled
-//    }
     
     // MARK: - Работа с камерой
     private func presentCamera() {
@@ -729,8 +732,9 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             imageView.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor)
         ])
         
+        // Кнопка закрытия
         let closeButton = UIButton(type: .system)
-        closeButton.setImage(UIImage(named: "close_icon"), for: .normal)
+        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
         closeButton.tintColor = .white
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         closeButton.addTarget(self, action: #selector(dismissPhotoVC), for: .touchUpInside)
@@ -740,20 +744,24 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             closeButton.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor, constant: -16)
         ])
         
+        // Добавляем кнопку удаления фото-маркера
         let deleteButton = UIButton(type: .system)
-        deleteButton.setImage(UIImage(named: "delete_icon"), for: .normal)
+        deleteButton.setImage(UIImage(systemName: "trash"), for: .normal)
         deleteButton.tintColor = .red
         deleteButton.translatesAutoresizingMaskIntoConstraints = false
         deleteButton.addTarget(self, action: #selector(deletePhotoMarkerAction(_:)), for: .touchUpInside)
         photoVC.view.addSubview(deleteButton)
         NSLayoutConstraint.activate([
             deleteButton.bottomAnchor.constraint(equalTo: photoVC.view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            deleteButton.centerXAnchor.constraint(equalTo: photoVC.view.centerXAnchor)
+            deleteButton.centerXAnchor.constraint(equalTo: photoVC.view.centerXAnchor),
+            deleteButton.widthAnchor.constraint(equalToConstant: 30),
+            deleteButton.heightAnchor.constraint(equalToConstant: 30)
         ])
         
         self.currentViewingMarker = marker
         present(photoVC, animated: true)
     }
+
     
     @objc private func dismissPhotoVC() {
         dismiss(animated: true)
@@ -762,19 +770,31 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     // MARK: - Рендер PDF
     func renderPDFtoImage(url: URL) -> UIImage? {
         guard let pdfDocument = CGPDFDocument(url as CFURL),
-              let page = pdfDocument.page(at: 1) else {
-            return nil
-        }
+              let page = pdfDocument.page(at: 1) else { return nil }
+        
         let pageRect = page.getBoxRect(.mediaBox)
-        let renderer = UIGraphicsImageRenderer(size: pageRect.size)
-        return renderer.image { ctx in
-            UIColor.white.set()
-            ctx.fill(pageRect)
-            ctx.cgContext.translateBy(x: 0, y: pageRect.size.height)
-            ctx.cgContext.scaleBy(x: 1, y: -1)
-            ctx.cgContext.drawPDFPage(page)
+        let renderSize = pageRect.size
+        let renderer = UIGraphicsImageRenderer(size: renderSize)
+        let img = renderer.image { ctx in
+            let context = ctx.cgContext
+            context.saveGState()
+            
+            // Переворачиваем контекст, чтобы PDF не был вверх ногами
+            context.translateBy(x: 0, y: renderSize.height)
+            context.scaleBy(x: 1, y: -1)
+            
+            // Получаем трансформацию для корректного отображения страницы
+            let transform = page.getDrawingTransform(.mediaBox, rect: CGRect(origin: .zero, size: renderSize), rotate: 0, preserveAspectRatio: true)
+            context.concatenate(transform)
+            
+            context.drawPDFPage(page)
+            context.restoreGState()
         }
+        return img
     }
+
+
+
     
     // MARK: - Загрузка фото-маркеров
     private func loadPhotoMarkers() {
@@ -825,21 +845,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     // MARK: - Загрузка текстовых меток
-//    private func loadTextMarkers() {
-//        let texts = repository.loadTexts(forDrawing: drawingId)
-//        for textMarker in texts {
-//            let label = UILabel()
-//            label.text = textMarker.text
-//            label.textColor = .black
-//            label.backgroundColor = UIColor.white.withAlphaComponent(0.7)
-//            label.sizeToFit()
-//            let centerX = textMarker.coordinate.x * pdfContentView.bounds.width
-//            let centerY = textMarker.coordinate.y * pdfContentView.bounds.height
-//            label.center = CGPoint(x: centerX, y: centerY)
-//            pdfImageView.addSubview(label)
-//            pdfImageView.bringSubviewToFront(label)
-//        }
-//    }
     
     @objc private func deletePhotoMarkerAction(_ sender: UIButton) {
         guard let marker = currentViewingMarker, let markerId = marker.photoEntityId else { return }
@@ -847,11 +852,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         marker.removeFromSuperview()
         dismiss(animated: true)
     }
-    
-    
-    
-    
-    
     
     
     private var layerButton: UIButton! {
@@ -883,11 +883,15 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     func setupLayerButton() {
         layerButton = UIButton(type: .custom)
         layerButton.translatesAutoresizingMaskIntoConstraints = false
-        layerButton.setImage(UIImage(named: "circle"), for: .normal) // Добавьте PNG-иконку для слоя
+        // Убираем установку изображения и настраиваем кнопку как круг
+        layerButton.layer.cornerRadius = 15 // половина от 30 (ширина/высота)
+        layerButton.layer.borderWidth = 1.0
+        layerButton.layer.borderColor = UIColor.gray.cgColor
+        // Устанавливаем начальный цвет (если activeLayer не выбран, то можно задать дефолт, например, черный)
+        layerButton.backgroundColor = activeLayer?.color ?? .black
         layerButton.addTarget(self, action: #selector(toggleLayerDropdown), for: .touchUpInside)
         bottomPanel.addSubview(layerButton)
         
-        // Пример размещения: слева на нижней панели
         NSLayoutConstraint.activate([
             layerButton.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 16),
             layerButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
@@ -895,6 +899,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             layerButton.heightAnchor.constraint(equalToConstant: 30)
         ])
     }
+
     
     @objc private func toggleLayerDropdown() {
         if layerDropdownView == nil {
@@ -976,7 +981,14 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     private func createLayerCell(for layer: LayerData) -> UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
-
+        
+        // Если этот слой является активным, подсвечиваем его фон
+        if let active = activeLayer, active.id == layer.id {
+            container.backgroundColor = UIColor.systemGray5
+        } else {
+            container.backgroundColor = UIColor.white
+        }
+        
         let hStack = UIStackView()
         hStack.axis = .horizontal
         hStack.spacing = 8
@@ -990,22 +1002,20 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             hStack.trailingAnchor.constraint(equalTo: container.trailingAnchor)
         ])
 
-        // Название слоя слева
+        // Название слоя
         let nameLabel = UILabel()
         nameLabel.text = layer.name
         hStack.addArrangedSubview(nameLabel)
 
-        // Добавляем спейсер, чтобы элементы справа прижались к краю
+        // Спейсер
         let spacer = UIView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
         hStack.addArrangedSubview(spacer)
-        
-        // Ограничиваем ширину спейсера, чтобы он занимал всё доступное пространство
         NSLayoutConstraint.activate([
             spacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 0)
         ])
 
-        // Круг, показывающий выбранный цвет
+        // Круг с цветом слоя
         let colorView = UIView()
         colorView.backgroundColor = layer.color
         colorView.layer.cornerRadius = 10
@@ -1032,6 +1042,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         return container
     }
 
+
     
     @objc private func layerCellTapped(_ gesture: UITapGestureRecognizer) {
         if let cell = gesture.view {
@@ -1039,29 +1050,15 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             if index < layers.count {
                 let selected = layers[index]
                 activeLayer = selected
-                // Здесь можно обновить UI (например, подсветить активную ячейку)
-                // и передать активный цвет в инструменты рисования:
-                // drawingView.currentColor = activeLayer?.color ?? UIColor.black
+                // Обновляем внешний вид кнопки, устанавливая цвет выбранного слоя
+                layerButton.backgroundColor = selected.color
                 hideLayerDropdown()
             }
         }
     }
     
-//    @objc private func addLayerButtonTapped() {
-//        let alert = UIAlertController(title: "Добавить слой", message: nil, preferredStyle: .alert)
-//        alert.addTextField { textField in
-//            textField.placeholder = "Название слоя"
-//        }
-//        // Для простоты предлагаем два варианта выбора цвета (расширять можно с помощью кастомного UI)
-//        alert.addAction(UIAlertAction(title: "Черный", style: .default, handler: { _ in
-//            self.saveNewLayer(from: alert, withColor: .black)
-//        }))
-//        alert.addAction(UIAlertAction(title: "Красный", style: .default, handler: { _ in
-//            self.saveNewLayer(from: alert, withColor: .red)
-//        }))
-//        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel, handler: nil))
-//        present(alert, animated: true)
-//    }
+    
+
     
     private func saveNewLayer(from alert: UIAlertController, withColor color: UIColor) {
         guard let name = alert.textFields?.first?.text, !name.isEmpty else { return }
@@ -1094,3 +1091,4 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         present(addLayerVC, animated: true, completion: nil)
     }
 }
+
