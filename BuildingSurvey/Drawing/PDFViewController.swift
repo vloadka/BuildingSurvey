@@ -43,6 +43,11 @@ struct LayerData {
     let color: UIColor
 }
 
+struct RectangleData {
+    let id: UUID
+    let rect: CGRect
+}
+
 class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate {
     // Исходные свойства
     private let pdfURL: URL
@@ -84,6 +89,13 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     private var textToggleButton: UIButton!
     private var textModeEnabled: Bool = false
     private var textTapRecognizer: UITapGestureRecognizer!
+    
+    // Режим создания четырехугольника
+    private var rectangleToggleButton: UIButton!
+    private var rectangleModeEnabled: Bool = false
+    private var rectangleTapRecognizer: UITapGestureRecognizer!
+    private var rectangleFirstPoint: CGPoint?
+    private var rectangleLayer: CAShapeLayer?
     
     // Ключ для сохранения зума
     private var zoomScaleKey: String {
@@ -128,6 +140,11 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         textTapRecognizer.isEnabled = false
         pdfContentView.addGestureRecognizer(textTapRecognizer)
         
+        // Инициализация распознавателя для прямоугольника
+            rectangleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleRectangleTap(_:)))
+            rectangleTapRecognizer.isEnabled = false
+            pdfContentView.addGestureRecognizer(rectangleTapRecognizer)
+        
         loadSavedLines()
         // Загрузка фото-маркеров, точек, полилиний и текстовых меток происходит в viewDidLayoutSubviews, когда размеры установлены
     }
@@ -161,6 +178,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             loadPointMarkers()
             loadPolylineMarkers()
             loadTextMarkers()
+            loadRectangleMarkers()
         }
     }
 
@@ -267,6 +285,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func setupButtons() {
+        
         // Кнопка для линий (рисование линий)
         drawingToggleButton = UIButton(type: .custom)
         drawingToggleButton.translatesAutoresizingMaskIntoConstraints = false
@@ -294,6 +313,12 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         textToggleButton.setImage(UIImage(named: "text_passive"), for: .normal)
         textToggleButton.addTarget(self, action: #selector(toggleTextMode(_:)), for: .touchUpInside)
         bottomPanel.addSubview(textToggleButton)
+        
+        rectangleToggleButton = UIButton(type: .custom)
+        rectangleToggleButton.translatesAutoresizingMaskIntoConstraints = false
+        rectangleToggleButton.setImage(UIImage(named: "rectangle_passive"), for: .normal)
+        rectangleToggleButton.addTarget(self, action: #selector(toggleRectangleMode(_:)), for: .touchUpInside)
+        bottomPanel.addSubview(rectangleToggleButton)
         
         // Кнопка для работы со слоями
           setupLayerButton()
@@ -324,7 +349,12 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             textToggleButton.trailingAnchor.constraint(equalTo: polylineToggleButton.leadingAnchor, constant: -20),
             textToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
             textToggleButton.heightAnchor.constraint(equalToConstant: 44),
-            textToggleButton.widthAnchor.constraint(equalToConstant: 44)
+            textToggleButton.widthAnchor.constraint(equalToConstant: 44),
+            
+            rectangleToggleButton.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -16),
+                rectangleToggleButton.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor),
+                rectangleToggleButton.widthAnchor.constraint(equalToConstant: 44),
+                rectangleToggleButton.heightAnchor.constraint(equalToConstant: 44)
         ])
         
         // Кнопки на верхней панели
@@ -1057,9 +1087,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
     }
     
-    
-
-    
     private func saveNewLayer(from alert: UIAlertController, withColor color: UIColor) {
         guard let name = alert.textFields?.first?.text, !name.isEmpty else { return }
         let newLayer = LayerData(id: UUID(), name: name, color: color)
@@ -1076,8 +1103,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         showLayerDropdown()
     }
     
-    
-    // Внутри PDFViewController.swift
     @objc private func addLayerButtonTapped() {
         let addLayerVC = AddLayerViewController()
         addLayerVC.modalPresentationStyle = .formSheet
@@ -1090,5 +1115,70 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
         present(addLayerVC, animated: true, completion: nil)
     }
+    
+    // Метод для переключения режима рисования прямоугольника:
+    @objc private func toggleRectangleMode(_ sender: UIButton) {
+        rectangleModeEnabled.toggle()
+        let imageName = rectangleModeEnabled ? "rectangle_active" : "rectangle_passive"
+        rectangleToggleButton.setImage(UIImage(named: imageName), for: .normal)
+        rectangleTapRecognizer.isEnabled = rectangleModeEnabled
+        if !rectangleModeEnabled {
+            rectangleFirstPoint = nil
+            rectangleLayer?.removeFromSuperlayer()
+            rectangleLayer = nil
+        }
+    }
+    
+    // Обработчик нажатий для рисования прямоугольника:
+    @objc private func handleRectangleTap(_ sender: UITapGestureRecognizer) {
+        let location = sender.location(in: pdfContentView)
+        if rectangleFirstPoint == nil {
+            // Сохраняем первую точку как верхний левый угол
+            rectangleFirstPoint = location
+            // (опционально: можно отобразить небольшой маркер, чтобы показать первую точку)
+        } else {
+            guard let first = rectangleFirstPoint else { return }
+            // Определяем координаты так, чтобы первая точка была верхним левым углом, а вторая – нижним правым
+            let x = min(first.x, location.x)
+            let y = min(first.y, location.y)
+            let width = abs(first.x - location.x)
+            let height = abs(first.y - location.y)
+            let rect = CGRect(x: x, y: y, width: width, height: height)
+            
+            // Удаляем предыдущий прямоугольник (если был)
+            rectangleLayer?.removeFromSuperlayer()
+            
+            // Рисуем прямоугольник
+            let layer = CAShapeLayer()
+            layer.strokeColor = UIColor.red.cgColor   // рамка красного цвета, можно изменить
+            layer.lineWidth = 2.0
+            layer.fillColor = UIColor.clear.cgColor     // прозрачное заполнение
+            let path = UIBezierPath(rect: rect)
+            layer.path = path.cgPath
+            pdfContentView.layer.addSublayer(layer)
+            rectangleLayer = layer
+            
+            // Сохраняем прямоугольник в базу данных
+            repository.saveRectangle(forDrawing: drawingId, rect: rect)
+            
+            // Сбрасываем состояние
+            rectangleFirstPoint = nil
+            rectangleModeEnabled = false
+            rectangleToggleButton.setImage(UIImage(named: "rectangle_passive"), for: .normal)
+            rectangleTapRecognizer.isEnabled = false
+        }
+    }
+    
+    private func loadRectangleMarkers() {
+        let rectangles = repository.loadRectangles(forDrawing: drawingId)
+        for rect in rectangles {
+            let shapeLayer = CAShapeLayer()
+            shapeLayer.strokeColor = UIColor.red.cgColor  // цвет рамки можно изменить
+            shapeLayer.lineWidth = 2.0
+            shapeLayer.fillColor = UIColor.clear.cgColor
+            let path = UIBezierPath(rect: rect)
+            shapeLayer.path = path.cgPath
+            pdfContentView.layer.addSublayer(shapeLayer)
+        }
+    }
 }
-

@@ -443,6 +443,42 @@ class GeneralRepository: ObservableObject {
             print("Ошибка удаления слоя: \(error)")
         }
     }
+    
+    // Сохранение прямоугольника для чертежа
+    func saveRectangle(forDrawing drawingId: UUID, rect: CGRect) {
+        let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+        
+        do {
+            if let drawing = try context.fetch(fetchRequest).first {
+                let rectangle = RectangleEntity(context: context)
+                rectangle.id = UUID()
+                rectangle.x = Double(rect.origin.x)
+                rectangle.y = Double(rect.origin.y)
+                rectangle.width = Double(rect.size.width)
+                rectangle.height = Double(rect.size.height)
+                rectangle.drawing = drawing
+                saveContext()
+            }
+        } catch {
+            print("Ошибка сохранения прямоугольника: \(error)")
+        }
+    }
+
+    // Загрузка прямоугольников для заданного чертежа
+    func loadRectangles(forDrawing drawingId: UUID) -> [CGRect] {
+        let fetchRequest: NSFetchRequest<RectangleEntity> = RectangleEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
+        
+        do {
+            let rectangleEntities = try context.fetch(fetchRequest)
+            return rectangleEntities.map { CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height) }
+        } catch {
+            print("Ошибка загрузки прямоугольников: \(error)")
+            return []
+        }
+    }
+
 }
 
 
@@ -470,7 +506,6 @@ extension UIColor {
                   blue: CGFloat(b) / 255,
                   alpha: CGFloat(a) / 255)
     }
-    
     
     
     func toHex(alpha: Bool = false) -> String? {

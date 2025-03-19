@@ -9,6 +9,7 @@
         <relationship name="points" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PointEntity" inverseName="drawing" inverseEntity="PointEntity"/>
         <relationship name="polylines" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PolylineEntity" inverseName="drawing" inverseEntity="PolylineEntity"/>
         <relationship name="project" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ProjectEntity" inverseName="drawings" inverseEntity="ProjectEntity"/>
+        <relationship name="rectangle" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="RectangleEntity" inverseName="drawing" inverseEntity="RectangleEntity"/>
         <relationship name="text" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TextEntity" inverseName="drawing" inverseEntity="TextEntity"/>
     </entity>
     <entity name="LayerEntity" representedClassName="LayerEntity" syncable="YES">
@@ -54,6 +55,14 @@
         <attribute name="projectFilePath" optional="YES" attributeType="String"/>
         <relationship name="drawings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="project" inverseEntity="DrawingEntity"/>
         <relationship name="layers" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LayerEntity" inverseName="project" inverseEntity="LayerEntity"/>
+    </entity>
+    <entity name="RectangleEntity" representedClassName="RectangleEntity" syncable="YES">
+        <attribute name="height" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="width" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="x" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="y" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="drawing" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="rectangle" inverseEntity="DrawingEntity"/>
     </entity>
     <entity name="TextEntity" representedClassName="TextEntity" syncable="YES">
         <attribute name="coordinateX" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>

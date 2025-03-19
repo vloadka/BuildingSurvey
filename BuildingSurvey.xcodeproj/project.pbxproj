@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF105B862CBEF780007E9C1E /* GeneralRepository.swift */; };
+		FF2BE6F42D8A179300ED8FB4 /* RectangleEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF2BE6F32D8A179300ED8FB4 /* RectangleEntity.swift */; };
 		FF83512D2D4F77FB002E64D2 /* PhotoLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF83512C2D4F77FB002E64D2 /* PhotoLoader.swift */; };
 		FF83512F2D4F7839002E64D2 /* LoadFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF83512E2D4F7839002E64D2 /* LoadFile.swift */; };
 		FF8351312D4F78B0002E64D2 /* TakePhoto.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF8351302D4F78B0002E64D2 /* TakePhoto.swift */; };
@@ -70,6 +71,7 @@
 
 /* Begin PBXFileReference section */
 		FF105B862CBEF780007E9C1E /* GeneralRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralRepository.swift; sourceTree = "<group>"; };
+		FF2BE6F32D8A179300ED8FB4 /* RectangleEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RectangleEntity.swift; sourceTree = "<group>"; };
 		FF83512C2D4F77FB002E64D2 /* PhotoLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLoader.swift; sourceTree = "<group>"; };
 		FF83512E2D4F7839002E64D2 /* LoadFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadFile.swift; sourceTree = "<group>"; };
 		FF8351302D4F78B0002E64D2 /* TakePhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakePhoto.swift; sourceTree = "<group>"; };
@@ -166,6 +168,7 @@
 				FF86A1972D81CC9C00FB9FD6 /* PointEntity.swift */,
 				FF86A19B2D843E1500FB9FD6 /* TextEntity.swift */,
 				FF86A19D2D849C7000FB9FD6 /* LayerEntity.swift */,
+				FF2BE6F32D8A179300ED8FB4 /* RectangleEntity.swift */,
 			);
 			path = bd;
 			sourceTree = "<group>";
@@ -462,6 +465,7 @@
 				FFFCDA772D7B3D6800681B3B /* PhotoEntity.swift in Sources */,
 				FF83512D2D4F77FB002E64D2 /* PhotoLoader.swift in Sources */,
 				FFCC17D82D58F63900BF061B /* DrawingListViewModel.swift in Sources */,
+				FF2BE6F42D8A179300ED8FB4 /* RectangleEntity.swift in Sources */,
 				FFFCDA732D78CFCD00681B3B /* Line.swift in Sources */,
 				FF83513E2D5655BE002E64D2 /* CoreDataManager.swift in Sources */,
 				FF86A1982D81CC9C00FB9FD6 /* PointEntity.swift in Sources */,
