@@ -79,7 +79,7 @@ class GeneralRepository: ObservableObject {
                 context.insert(newDrawing)
                 saveContext()
                 
-                print("Добавлен чертеж \(name) для проекта \(project.id)") // Лог проверки
+                print("Добавлен чертеж \(name) для проекта \(project.id)")
             } else {
                 print("Ошибка: проект не найден")
             }
@@ -123,7 +123,16 @@ class GeneralRepository: ObservableObject {
         }
     }
     
-    func saveLine(for drawingId: UUID, start: CGPoint, end: CGPoint) {
+    // Метод для получения LayerEntity по идентификатору (используется для привязки объекта к слою)
+    func getLayerEntity(withId id: UUID) -> LayerEntity? {
+        let fetchRequest: NSFetchRequest<LayerEntity> = LayerEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        return try? context.fetch(fetchRequest).first
+    }
+    
+    // MARK: - Методы сохранения с поддержкой слоя
+    
+    func saveLine(forDrawing drawingId: UUID, start: CGPoint, end: CGPoint, layer: LayerData? = nil) {
         let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
 
@@ -135,8 +144,15 @@ class GeneralRepository: ObservableObject {
                 line.startY = start.y
                 line.endX = end.x
                 line.endY = end.y
-                line.drawing = drawing  // Связываем линию с чертежом
-                
+                line.drawing = drawing
+                if let layerData = layer {
+                    if let layerEntity = getLayerEntity(withId: layerData.id) {
+                        print("Устанавливаем слой с цветом: \(layerEntity.uiColor ?? UIColor.clear)")
+                        line.layer = layerEntity
+                    } else {
+                        print("Слой не найден для id \(layerData.id)")
+                    }
+                }
                 saveContext()
             }
         } catch {
@@ -144,16 +160,19 @@ class GeneralRepository: ObservableObject {
         }
     }
 
-    func loadLines(for drawingId: UUID) -> [(CGPoint, CGPoint)] {
+
+    
+    func loadLines(for drawingId: UUID) -> [LineData] {
         let fetchRequest: NSFetchRequest<LineEntity> = LineEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
-
         do {
             let lines = try context.fetch(fetchRequest)
             return lines.map { line in
                 let start = CGPoint(x: line.startX, y: line.startY)
                 let end = CGPoint(x: line.endX, y: line.endY)
-                return (start, end)
+                // Если связь с слоем установлена, берем uiColor; иначе – используем черный цвет.
+                let color = line.layer?.uiColor ?? UIColor.black
+                return LineData(start: start, end: end, color: color)
             }
         } catch {
             print("Ошибка загрузки линий: \(error)")
@@ -161,24 +180,7 @@ class GeneralRepository: ObservableObject {
         }
     }
 
-    private func saveContext() {
-        CoreDataManager.shared.saveContext()
-    }
-    
-    func getNextPhotoNumber(forDrawing drawingId: UUID) -> Int {
-        let fetchRequest: NSFetchRequest<PhotoEntity> = PhotoEntity.fetchRequest()
-        fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
-        
-        do {
-            let photos = try context.fetch(fetchRequest)
-            // Вычисляем максимальный номер фото и возвращаем следующий номер (если фото отсутствуют, возвращаем 1)
-            let maxNumber = photos.map { Int($0.photoNumber) }.max() ?? 0
-            return maxNumber + 1
-        } catch {
-            print("Ошибка получения номера фото: \(error)")
-            return 1
-        }
-    }
+
     
     func savePhotoMarker(forDrawing drawingId: UUID,
                          withId id: UUID,
@@ -240,59 +242,63 @@ class GeneralRepository: ObservableObject {
         }
     }
     
-    func savePoint(forDrawing drawingId: UUID, withId id: UUID = UUID(), coordinate: CGPoint) {
-            let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
-            do {
-                if let drawing = try context.fetch(fetchRequest).first {
-                    let pointEntity = PointEntity(context: context)
-                    pointEntity.id = id
-                    pointEntity.coordinateX = coordinate.x
-                    pointEntity.coordinateY = coordinate.y
-                    pointEntity.drawing = drawing
-                    saveContext()
-                } else {
-                    print("Ошибка: Чертеж с id \(drawingId) не найден.")
+    func savePoint(forDrawing drawingId: UUID, withId id: UUID = UUID(), coordinate: CGPoint, layer: LayerData? = nil) {
+        let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+        do {
+            if let drawing = try context.fetch(fetchRequest).first {
+                let pointEntity = PointEntity(context: context)
+                pointEntity.id = id
+                pointEntity.coordinateX = coordinate.x
+                pointEntity.coordinateY = coordinate.y
+                pointEntity.drawing = drawing
+                if let layerData = layer, let layerEntity = getLayerEntity(withId: layerData.id) {
+                    pointEntity.layer = layerEntity
                 }
-            } catch {
-                print("Ошибка сохранения точки: \(error)")
+                saveContext()
+            } else {
+                print("Ошибка: Чертеж с id \(drawingId) не найден.")
             }
+        } catch {
+            print("Ошибка сохранения точки: \(error)")
         }
+    }
 
-        func loadPoints(forDrawing drawingId: UUID) -> [PointMarkerData] {
-            let fetchRequest: NSFetchRequest<PointEntity> = PointEntity.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
-            do {
-                let pointEntities = try context.fetch(fetchRequest)
-                return pointEntities.compactMap { point in
-                    guard let id = point.id else { return nil }
-                    return PointMarkerData(id: id, coordinate: CGPoint(x: point.coordinateX, y: point.coordinateY))
-                }
-            } catch {
-                print("Ошибка загрузки точек: \(error)")
-                return []
+    func loadPoints(forDrawing drawingId: UUID) -> [PointData] {
+        let fetchRequest: NSFetchRequest<PointEntity> = PointEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
+        do {
+            let pointEntities = try context.fetch(fetchRequest)
+            return pointEntities.compactMap { entity in
+                let coordinate = CGPoint(x: entity.coordinateX, y: entity.coordinateY)
+                let color = entity.layer?.uiColor ?? UIColor.blue
+                return PointData(coordinate: coordinate, color: color)
             }
+        } catch {
+            print("Ошибка загрузки точек: \(error)")
+            return []
         }
+    }
+
     
-    func savePolyline(forDrawing drawingId: UUID, points: [CGPoint], closed: Bool) {
+    func savePolyline(forDrawing drawingId: UUID, points: [CGPoint], closed: Bool, layer: LayerData? = nil) {
         let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
         
         do {
             if let drawing = try context.fetch(fetchRequest).first {
-                // Создаем новую полилинию
                 let polyline = PolylineEntity(context: context)
                 polyline.id = UUID()
                 polyline.closed = closed
-                
-                // Сериализуем массив точек в Data (нормализованные координаты можно сохранять так же)
                 if let data = try? NSKeyedArchiver.archivedData(withRootObject: points, requiringSecureCoding: false) {
                     polyline.pointsData = data
                 } else {
                     print("Ошибка сериализации точек для полилинии")
                 }
-                
                 polyline.drawing = drawing
+                if let layerData = layer, let layerEntity = getLayerEntity(withId: layerData.id) {
+                    polyline.layer = layerEntity
+                }
                 saveContext()
             } else {
                 print("Ошибка: Чертеж с id \(drawingId) не найден.")
@@ -305,16 +311,14 @@ class GeneralRepository: ObservableObject {
     func loadPolylines(forDrawing drawingId: UUID) -> [PolylineData] {
         let fetchRequest: NSFetchRequest<PolylineEntity> = PolylineEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
-        
         do {
             let polylineEntities = try context.fetch(fetchRequest)
             return polylineEntities.compactMap { entity in
-                guard let id = entity.id,
-                      let data = entity.pointsData,
+                guard let data = entity.pointsData,
                       let points = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data) as? [CGPoint]
                 else { return nil }
-                
-                return PolylineData(id: id, points: points, closed: entity.closed)
+                let color = entity.layer?.uiColor ?? UIColor.green
+                return PolylineData(points: points, closed: entity.closed, color: color)
             }
         } catch {
             print("Ошибка загрузки полилиний: \(error)")
@@ -323,7 +327,7 @@ class GeneralRepository: ObservableObject {
     }
 
     
-    func saveText(forDrawing drawingId: UUID, text: String, coordinate: CGPoint) {
+    func saveText(forDrawing drawingId: UUID, text: String, coordinate: CGPoint, layer: LayerData? = nil) {
         let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
         do {
@@ -334,6 +338,9 @@ class GeneralRepository: ObservableObject {
                 textEntity.coordinateX = Double(coordinate.x)
                 textEntity.coordinateY = Double(coordinate.y)
                 textEntity.drawing = drawing
+                if let layerData = layer, let layerEntity = getLayerEntity(withId: layerData.id) {
+                    textEntity.layer = layerEntity
+                }
                 saveContext()
             } else {
                 print("Ошибка: Чертеж с id \(drawingId) не найден.")
@@ -343,22 +350,23 @@ class GeneralRepository: ObservableObject {
         }
     }
 
-    func loadTexts(forDrawing drawingId: UUID) -> [TextMarkerData] {
+    func loadTexts(forDrawing drawingId: UUID) -> [TextData] {
         let fetchRequest: NSFetchRequest<TextEntity> = TextEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
         do {
             let textEntities = try context.fetch(fetchRequest)
-            return textEntities.compactMap { textEntity in
-                guard let id = textEntity.id,
-                      let text = textEntity.text else { return nil }
-                let coordinate = CGPoint(x: textEntity.coordinateX, y: textEntity.coordinateY)
-                return TextMarkerData(id: id, text: text, coordinate: coordinate)
+            return textEntities.compactMap { entity in
+                guard let text = entity.text else { return nil }
+                let coordinate = CGPoint(x: entity.coordinateX, y: entity.coordinateY)
+                let color = entity.layer?.uiColor ?? UIColor.blue
+                return TextData(text: text, coordinate: coordinate, color: color)
             }
         } catch {
             print("Ошибка загрузки текстовых меток: \(error)")
             return []
         }
     }
+
     
     func saveCoverImage(forProjectId projectId: UUID, image: UIImage) {
         let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
@@ -366,7 +374,6 @@ class GeneralRepository: ObservableObject {
         
         do {
             if let project = try context.fetch(fetchRequest).first {
-                // Сохраняем изображение в формате PNG (вы можете использовать и JPEG, например, с jpegData(compressionQuality: 0.8))
                 project.coverImageData = image.pngData()
                 saveContext()
             } else {
@@ -394,7 +401,6 @@ class GeneralRepository: ObservableObject {
     // Загрузка слоёв для заданного проекта
     func loadLayers(forProject project: Project) -> [LayerEntity] {
         let fetchRequest: NSFetchRequest<LayerEntity> = LayerEntity.fetchRequest()
-        // Предполагается, что ProjectEntity имеет атрибут id
         fetchRequest.predicate = NSPredicate(format: "project.id == %@", project.id as CVarArg)
         
         do {
@@ -409,25 +415,25 @@ class GeneralRepository: ObservableObject {
     // Сохранение нового слоя для заданного проекта.
     // Здесь передаются название и цвет слоя.
     func saveLayer(forProject project: Project, layer: LayerData) {
-            let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "id == %@", project.id as CVarArg)
-            
-            do {
-                if let projectEntity = try context.fetch(fetchRequest).first {
-                    let newLayer = LayerEntity(context: context)
-                    newLayer.id = layer.id
-                    newLayer.name = layer.name
-                    newLayer.colorHex = layer.color.toHex()
-                    newLayer.timestamp = Date()
-                    newLayer.setValue(projectEntity, forKey: "project")
-                    saveContext()
-                } else {
-                    print("Ошибка: проект не найден при сохранении слоя")
-                }
-            } catch {
-                print("Ошибка сохранения слоя: \(error)")
+        let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", project.id as CVarArg)
+        
+        do {
+            if let projectEntity = try context.fetch(fetchRequest).first {
+                let newLayer = LayerEntity(context: context)
+                newLayer.id = layer.id
+                newLayer.name = layer.name
+                newLayer.colorHex = layer.color.toHex()
+                newLayer.timestamp = Date()
+                newLayer.setValue(projectEntity, forKey: "project")
+                saveContext()
+            } else {
+                print("Ошибка: проект не найден при сохранении слоя")
             }
+        } catch {
+            print("Ошибка сохранения слоя: \(error)")
         }
+    }
     
     // Удаление слоя по его идентификатору
     func deleteLayer(withId id: UUID) {
@@ -444,8 +450,27 @@ class GeneralRepository: ObservableObject {
         }
     }
     
+    
+    private func saveContext() {
+        CoreDataManager.shared.saveContext()
+    }
+    
+    func getNextPhotoNumber(forDrawing drawingId: UUID) -> Int {
+        let fetchRequest: NSFetchRequest<PhotoEntity> = PhotoEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
+        
+        do {
+            let photos = try context.fetch(fetchRequest)
+            let maxNumber = photos.map { Int($0.photoNumber) }.max() ?? 0
+            return maxNumber + 1
+        } catch {
+            print("Ошибка получения номера фото: \(error)")
+            return 1
+        }
+    }
+    
     // Сохранение прямоугольника для чертежа
-    func saveRectangle(forDrawing drawingId: UUID, rect: CGRect) {
+    func saveRectangle(forDrawing drawingId: UUID, rect: CGRect, layer: LayerData? = nil) {
         let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
         
@@ -458,6 +483,9 @@ class GeneralRepository: ObservableObject {
                 rectangle.width = Double(rect.size.width)
                 rectangle.height = Double(rect.size.height)
                 rectangle.drawing = drawing
+                if let layerData = layer, let layerEntity = getLayerEntity(withId: layerData.id) {
+                    rectangle.layer = layerEntity
+                }
                 saveContext()
             }
         } catch {
@@ -465,22 +493,26 @@ class GeneralRepository: ObservableObject {
         }
     }
 
+
     // Загрузка прямоугольников для заданного чертежа
-    func loadRectangles(forDrawing drawingId: UUID) -> [CGRect] {
+    func loadRectangles(forDrawing drawingId: UUID) -> [RectangleData] {
         let fetchRequest: NSFetchRequest<RectangleEntity> = RectangleEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
-        
         do {
             let rectangleEntities = try context.fetch(fetchRequest)
-            return rectangleEntities.map { CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height) }
+            return rectangleEntities.map { rectangle in
+                let rect = CGRect(x: rectangle.x, y: rectangle.y, width: rectangle.width, height: rectangle.height)
+                let color = rectangle.layer?.uiColor ?? UIColor.red
+                return RectangleData(rect: rect, color: color)
+            }
         } catch {
             print("Ошибка загрузки прямоугольников: \(error)")
             return []
         }
     }
 
-}
 
+}
 
 extension UIColor {
     convenience init?(hex: String) {

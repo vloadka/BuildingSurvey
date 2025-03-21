@@ -15,6 +15,7 @@ public class RectangleEntity: NSManagedObject {
     @NSManaged public var width: Double
     @NSManaged public var height: Double
     @NSManaged public var drawing: DrawingEntity?
+    @NSManaged public var layer: LayerEntity? // Новое свойство для привязки к слою
 }
 
 extension RectangleEntity {

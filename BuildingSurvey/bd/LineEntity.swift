@@ -15,4 +15,5 @@ public class LineEntity: NSManagedObject {
     @NSManaged public var endX: Double
     @NSManaged public var endY: Double
     @NSManaged public var drawing: DrawingEntity?
+    @NSManaged public var layer: LayerEntity?
 }

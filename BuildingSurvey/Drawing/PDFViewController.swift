@@ -27,9 +27,15 @@ struct PointMarkerData {
 }
 
 struct PolylineData {
-    let id: UUID
     let points: [CGPoint]
     let closed: Bool
+    let color: UIColor
+}
+
+struct LineData {
+    let start: CGPoint
+    let end: CGPoint
+    let color: UIColor
 }
 
 struct TextMarkerData {
@@ -44,8 +50,19 @@ struct LayerData {
 }
 
 struct RectangleData {
-    let id: UUID
     let rect: CGRect
+    let color: UIColor
+}
+
+struct TextData {
+    let text: String
+    let coordinate: CGPoint
+    let color: UIColor
+}
+
+struct PointData {
+    let coordinate: CGPoint
+    let color: UIColor
 }
 
 class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate {
@@ -182,7 +199,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
     }
 
-    
     // MARK: - Настройка интерфейса
     private func setupPanels() {
         let panelHeight: CGFloat = 60.0
@@ -266,8 +282,9 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         drawingView.backgroundColor = .clear
         drawingView.onLineDrawn = { [weak self] start, end in
             guard let self = self else { return }
-            self.repository.saveLine(for: self.drawingId, start: start, end: end)
+            self.repository.saveLine(forDrawing: self.drawingId, start: start, end: end, layer: self.activeLayer)
         }
+
         drawingView.isUserInteractionEnabled = false
         pdfContentView.addSubview(drawingView)
         
@@ -391,23 +408,28 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func loadSavedLines() {
-        let savedLines = repository.loadLines(for: drawingId)
-        let lineObjects = savedLines.map { Line(start: $0.0, end: $0.1) }
-        drawingView.loadLines(lineObjects)
+        let savedLines = repository.loadLines(for: drawingId)  // [LineData]
+        // Обновляем currentLineColor DrawingView, например, берем из первой линии (если есть)
+        if let firstLine = savedLines.first {
+            drawingView.currentLineColor = firstLine.color
+        }
+        for lineData in savedLines {
+            drawingView.drawLine(from: lineData.start, to: lineData.end, color: lineData.color)
+        }
     }
     
     // Новый метод для загрузки полилиний
     private func loadPolylineMarkers() {
-        let polylines = repository.loadPolylines(forDrawing: drawingId)
-        for polyline in polylines {
+        let polylineDataArray = repository.loadPolylines(forDrawing: drawingId)  // [PolylineData]
+        for polylineData in polylineDataArray {
             let shapeLayer = CAShapeLayer()
-            shapeLayer.strokeColor = UIColor.orange.cgColor
+            shapeLayer.strokeColor = polylineData.color.cgColor
             shapeLayer.lineWidth = 2.0
             shapeLayer.fillColor = UIColor.clear.cgColor
             let path = UIBezierPath()
-            if let first = polyline.points.first {
+            if let first = polylineData.points.first {
                 path.move(to: first)
-                for point in polyline.points.dropFirst() {
+                for point in polylineData.points.dropFirst() {
                     path.addLine(to: point)
                 }
             }
@@ -415,23 +437,25 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             pdfContentView.layer.addSublayer(shapeLayer)
         }
     }
+
     
     // Новый метод для загрузки текстовых меток
     private func loadTextMarkers() {
-        let texts = repository.loadTexts(forDrawing: drawingId)
-        for textMarker in texts {
+        let texts = repository.loadTexts(forDrawing: drawingId)  // [TextData]
+        for textData in texts {
             let label = UILabel()
-            label.text = textMarker.text
-            label.textColor = .blue
+            label.text = textData.text
+            label.textColor = textData.color
             label.backgroundColor = .clear
             label.sizeToFit()
-            let centerX = textMarker.coordinate.x * pdfContentView.bounds.width
-            let centerY = textMarker.coordinate.y * pdfContentView.bounds.height
+            let centerX = textData.coordinate.x * pdfContentView.bounds.width
+            let centerY = textData.coordinate.y * pdfContentView.bounds.height
             label.center = CGPoint(x: centerX, y: centerY)
             pdfImageView.addSubview(label)
             pdfImageView.bringSubviewToFront(label)
         }
     }
+
     
     // MARK: - UIScrollViewDelegate
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {
@@ -527,7 +551,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         let normalizedY = location.y / pdfContentView.bounds.height
         let normalizedPoint = CGPoint(x: normalizedX, y: normalizedY)
        
-        repository.savePoint(forDrawing: drawingId, coordinate: normalizedPoint)
+        repository.savePoint(forDrawing: drawingId, coordinate: normalizedPoint, layer: activeLayer)
     }
     
     // MARK: - Обработка создания полилинии
@@ -648,7 +672,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     
     @objc private func savePolylineAction() {
         // Сохраняем полилинию в открытом виде (без замыкания)
-        repository.savePolyline(forDrawing: drawingId, points: currentPolylinePoints, closed: false)
+        repository.savePolyline(forDrawing: drawingId, points: currentPolylinePoints, closed: true, layer: activeLayer)
         cancelCurrentPolyline()
         hidePolylineControlPanel()
         disablePolylineMode()
@@ -661,7 +685,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             currentPolylinePoints.append(first)
             updatePolylineLayer()
         }
-        repository.savePolyline(forDrawing: drawingId, points: currentPolylinePoints, closed: true)
+        repository.savePolyline(forDrawing: drawingId, points: currentPolylinePoints, closed: true, layer: activeLayer)
         cancelCurrentPolyline()
         hidePolylineControlPanel()
         disablePolylineMode()
@@ -682,7 +706,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             // Создаем метку с введенным текстом
             let label = UILabel()
             label.text = text
-            label.textColor = .blue
+            label.textColor = self.activeLayer?.color ?? .blue
             label.backgroundColor = .clear
             label.sizeToFit()
             label.center = location
@@ -693,7 +717,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             let normalizedX = location.x / self.pdfContentView.bounds.width
             let normalizedY = location.y / self.pdfContentView.bounds.height
             let normalizedPoint = CGPoint(x: normalizedX, y: normalizedY)
-            self.repository.saveText(forDrawing: self.drawingId, text: text, coordinate: normalizedPoint)
+            self.repository.saveText(forDrawing: self.drawingId, text: text, coordinate: normalizedPoint, layer: self.activeLayer)
         }))
         present(alert, animated: true, completion: nil)
     }
@@ -856,12 +880,11 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     
     // MARK: - Загрузка точек
     private func loadPointMarkers() {
-        let points = repository.loadPoints(forDrawing: drawingId)
+        let points = repository.loadPoints(forDrawing: drawingId)  // [PointData]
         let markerSize: CGFloat = 10.0
-        
         for pointData in points {
             let marker = UIButton(frame: CGRect(x: 0, y: 0, width: markerSize, height: markerSize))
-            marker.backgroundColor = .blue
+            marker.backgroundColor = pointData.color
             marker.layer.cornerRadius = markerSize / 2
             marker.clipsToBounds = true
             
@@ -873,6 +896,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             pdfImageView.bringSubviewToFront(marker)
         }
     }
+
     
     // MARK: - Загрузка текстовых меток
     
@@ -883,7 +907,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         dismiss(animated: true)
     }
     
-    
+    // Новые свойства для работы со слоями
     private var layerButton: UIButton! {
         get { return objc_getAssociatedObject(self, &AssociatedKeys.layerButton) as? UIButton }
         set { objc_setAssociatedObject(self, &AssociatedKeys.layerButton, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
@@ -901,23 +925,19 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         set { objc_setAssociatedObject(self, &AssociatedKeys.layers, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 
-    
     private struct AssociatedKeys {
         static var layerButton: UInt8 = 0
         static var layerDropdownView: UInt8 = 0
         static var activeLayer: UInt8 = 0
         static var layers: UInt8 = 0
     }
-    
-    // Вызываем этот метод в viewDidLoad()
+
     func setupLayerButton() {
         layerButton = UIButton(type: .custom)
         layerButton.translatesAutoresizingMaskIntoConstraints = false
-        // Убираем установку изображения и настраиваем кнопку как круг
-        layerButton.layer.cornerRadius = 15 // половина от 30 (ширина/высота)
+        layerButton.layer.cornerRadius = 15
         layerButton.layer.borderWidth = 1.0
         layerButton.layer.borderColor = UIColor.gray.cgColor
-        // Устанавливаем начальный цвет (если activeLayer не выбран, то можно задать дефолт, например, черный)
         layerButton.backgroundColor = activeLayer?.color ?? .black
         layerButton.addTarget(self, action: #selector(toggleLayerDropdown), for: .touchUpInside)
         bottomPanel.addSubview(layerButton)
@@ -929,7 +949,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             layerButton.heightAnchor.constraint(equalToConstant: 30)
         ])
     }
-
     
     @objc private func toggleLayerDropdown() {
         if layerDropdownView == nil {
@@ -940,9 +959,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func showLayerDropdown() {
-        // Получаем слои (LayerEntity) из репозитория
         let layerEntities = repository.loadLayers(forProject: project)
-        // Преобразуем LayerEntity в LayerData
         layers = layerEntities.map { entity in
             LayerData(
                 id: entity.id ?? UUID(),
@@ -951,7 +968,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             )
         }
         
-        // Если слой с названием "0" отсутствует, добавляем его по умолчанию
         if !layers.contains(where: { $0.name == "0" }) {
             let defaultLayer = LayerData(id: UUID(), name: "0", color: .black)
             layers.insert(defaultLayer, at: 0)
@@ -960,14 +976,13 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         
         let dropdown = UIView()
         dropdown.translatesAutoresizingMaskIntoConstraints = false
-        dropdown.backgroundColor = UIColor.white
+        dropdown.backgroundColor = .white
         dropdown.layer.borderWidth = 1.0
         dropdown.layer.borderColor = UIColor.gray.cgColor
         dropdown.layer.cornerRadius = 5.0
         view.addSubview(dropdown)
         self.layerDropdownView = dropdown
         
-        // Расположим dropdown чуть выше нижней панели
         NSLayoutConstraint.activate([
             dropdown.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 16),
             dropdown.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -16),
@@ -986,16 +1001,14 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             stackView.trailingAnchor.constraint(equalTo: dropdown.trailingAnchor, constant: -8)
         ])
         
-        // Для каждого слоя создаём ячейку
         for (index, layer) in layers.enumerated() {
             let layerCell = createLayerCell(for: layer)
-            layerCell.tag = index // Используем tag для идентификации ячейки
+            layerCell.tag = index
             let tap = UITapGestureRecognizer(target: self, action: #selector(layerCellTapped(_:)))
             layerCell.addGestureRecognizer(tap)
             stackView.addArrangedSubview(layerCell)
         }
         
-        // Добавляем кнопку "Добавить слой"
         let addLayerButton = UIButton(type: .system)
         addLayerButton.setTitle("Добавить слой", for: .normal)
         addLayerButton.addTarget(self, action: #selector(addLayerButtonTapped), for: .touchUpInside)
@@ -1011,13 +1024,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     private func createLayerCell(for layer: LayerData) -> UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Если этот слой является активным, подсвечиваем его фон
-        if let active = activeLayer, active.id == layer.id {
-            container.backgroundColor = UIColor.systemGray5
-        } else {
-            container.backgroundColor = UIColor.white
-        }
+        container.backgroundColor = (activeLayer?.id == layer.id) ? UIColor.systemGray5 : UIColor.white
         
         let hStack = UIStackView()
         hStack.axis = .horizontal
@@ -1031,21 +1038,18 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             hStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             hStack.trailingAnchor.constraint(equalTo: container.trailingAnchor)
         ])
-
-        // Название слоя
+        
         let nameLabel = UILabel()
         nameLabel.text = layer.name
         hStack.addArrangedSubview(nameLabel)
-
-        // Спейсер
+        
         let spacer = UIView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
         hStack.addArrangedSubview(spacer)
         NSLayoutConstraint.activate([
             spacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 0)
         ])
-
-        // Круг с цветом слоя
+        
         let colorView = UIView()
         colorView.backgroundColor = layer.color
         colorView.layer.cornerRadius = 10
@@ -1057,7 +1061,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         ])
         hStack.addArrangedSubview(colorView)
         
-        // Кнопка удаления
         let deleteButton = UIButton(type: .custom)
         deleteButton.setImage(UIImage(named: "decline"), for: .normal)
         deleteButton.accessibilityIdentifier = layer.id.uuidString
@@ -1072,16 +1075,15 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         return container
     }
 
-
-    
     @objc private func layerCellTapped(_ gesture: UITapGestureRecognizer) {
         if let cell = gesture.view {
             let index = cell.tag
             if index < layers.count {
                 let selected = layers[index]
                 activeLayer = selected
-                // Обновляем внешний вид кнопки, устанавливая цвет выбранного слоя
                 layerButton.backgroundColor = selected.color
+                // Обновляем цвет линии в DrawingView:
+                drawingView.currentLineColor = selected.color
                 hideLayerDropdown()
             }
         }
@@ -1150,7 +1152,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             
             // Рисуем прямоугольник
             let layer = CAShapeLayer()
-            layer.strokeColor = UIColor.red.cgColor   // рамка красного цвета, можно изменить
+            let strokeColor = activeLayer?.color.cgColor ?? UIColor.red.cgColor
+            layer.strokeColor = strokeColor
             layer.lineWidth = 2.0
             layer.fillColor = UIColor.clear.cgColor     // прозрачное заполнение
             let path = UIBezierPath(rect: rect)
@@ -1159,7 +1162,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             rectangleLayer = layer
             
             // Сохраняем прямоугольник в базу данных
-            repository.saveRectangle(forDrawing: drawingId, rect: rect)
+            repository.saveRectangle(forDrawing: drawingId, rect: rect, layer: activeLayer)
             
             // Сбрасываем состояние
             rectangleFirstPoint = nil
@@ -1170,13 +1173,13 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func loadRectangleMarkers() {
-        let rectangles = repository.loadRectangles(forDrawing: drawingId)
-        for rect in rectangles {
+        let rectangles = repository.loadRectangles(forDrawing: drawingId)  // [RectangleData]
+        for rectData in rectangles {
             let shapeLayer = CAShapeLayer()
-            shapeLayer.strokeColor = UIColor.red.cgColor  // цвет рамки можно изменить
+            shapeLayer.strokeColor = rectData.color.cgColor
             shapeLayer.lineWidth = 2.0
             shapeLayer.fillColor = UIColor.clear.cgColor
-            let path = UIBezierPath(rect: rect)
+            let path = UIBezierPath(rect: rectData.rect)
             shapeLayer.path = path.cgPath
             pdfContentView.layer.addSublayer(shapeLayer)
         }

@@ -13,6 +13,7 @@ public class PolylineEntity: NSManagedObject {
     @NSManaged public var pointsData: Data?
     @NSManaged public var closed: Bool
     @NSManaged public var drawing: DrawingEntity?
+    @NSManaged public var layer: LayerEntity? // Новое свойство для привязки к слою
 }
 
 extension PolylineEntity {

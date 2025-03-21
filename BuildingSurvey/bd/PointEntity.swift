@@ -13,6 +13,7 @@ public class PointEntity: NSManagedObject {
     @NSManaged public var coordinateX: Double
     @NSManaged public var coordinateY: Double
     @NSManaged public var drawing: DrawingEntity?
+    @NSManaged public var layer: LayerEntity? // Новое свойство для привязки к слою
 }
 
 extension PointEntity {
