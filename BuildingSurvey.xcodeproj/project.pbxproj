@@ -21,6 +21,10 @@
 		FF86A19C2D843E1600FB9FD6 /* TextEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF86A19B2D843E1500FB9FD6 /* TextEntity.swift */; };
 		FF86A19E2D849C7000FB9FD6 /* LayerEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF86A19D2D849C7000FB9FD6 /* LayerEntity.swift */; };
 		FF86A1A02D84ACFD00FB9FD6 /* AddLayerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF86A19F2D84ACFD00FB9FD6 /* AddLayerViewController.swift */; };
+		FF92EC612D8DEDC3007132FD /* CredentialsLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF92EC602D8DEDC3007132FD /* CredentialsLoginView.swift */; };
+		FF92EC632D8DF10B007132FD /* CredentialsLoginViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF92EC622D8DF10B007132FD /* CredentialsLoginViewModel.swift */; };
+		FF92EC672D8DF54B007132FD /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF92EC662D8DF54B007132FD /* ProfileView.swift */; };
+		FF92EC692D8DF813007132FD /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF92EC682D8DF813007132FD /* ProfileViewModel.swift */; };
 		FF994F7F2C9B55E10027A6D3 /* BuildingSurveyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */; };
 		FF994F812C9B55E10027A6D3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994F802C9B55E10027A6D3 /* ContentView.swift */; };
 		FF994F832C9B55E30027A6D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FF994F822C9B55E30027A6D3 /* Assets.xcassets */; };
@@ -85,6 +89,10 @@
 		FF86A19B2D843E1500FB9FD6 /* TextEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextEntity.swift; sourceTree = "<group>"; };
 		FF86A19D2D849C7000FB9FD6 /* LayerEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayerEntity.swift; sourceTree = "<group>"; };
 		FF86A19F2D84ACFD00FB9FD6 /* AddLayerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddLayerViewController.swift; sourceTree = "<group>"; };
+		FF92EC602D8DEDC3007132FD /* CredentialsLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialsLoginView.swift; sourceTree = "<group>"; };
+		FF92EC622D8DF10B007132FD /* CredentialsLoginViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialsLoginViewModel.swift; sourceTree = "<group>"; };
+		FF92EC662D8DF54B007132FD /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		FF92EC682D8DF813007132FD /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
 		FF994F7B2C9B55E10027A6D3 /* BuildingSurvey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuildingSurvey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildingSurveyApp.swift; sourceTree = "<group>"; };
 		FF994F802C9B55E10027A6D3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -173,6 +181,24 @@
 			path = bd;
 			sourceTree = "<group>";
 		};
+		FF92EC5F2D8DEDB6007132FD /* CredentialsLogin */ = {
+			isa = PBXGroup;
+			children = (
+				FF92EC602D8DEDC3007132FD /* CredentialsLoginView.swift */,
+				FF92EC622D8DF10B007132FD /* CredentialsLoginViewModel.swift */,
+			);
+			path = CredentialsLogin;
+			sourceTree = "<group>";
+		};
+		FF92EC652D8DF540007132FD /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				FF92EC662D8DF54B007132FD /* ProfileView.swift */,
+				FF92EC682D8DF813007132FD /* ProfileViewModel.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
 		FF994F722C9B55E10027A6D3 = {
 			isa = PBXGroup;
 			children = (
@@ -196,6 +222,8 @@
 		FF994F7D2C9B55E10027A6D3 /* BuildingSurvey */ = {
 			isa = PBXGroup;
 			children = (
+				FF92EC5F2D8DEDB6007132FD /* CredentialsLogin */,
+				FF92EC652D8DF540007132FD /* Profile */,
 				FF8351382D4F9D51002E64D2 /* Info.plist */,
 				FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */,
 				FF994F802C9B55E10027A6D3 /* ContentView.swift */,
@@ -444,6 +472,8 @@
 				FF8351422D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift in Sources */,
 				FFFCDA6D2D78C08100681B3B /* LineEntity.swift in Sources */,
 				FF8351402D565908002E64D2 /* ProjectEntity.swift in Sources */,
+				FF92EC632D8DF10B007132FD /* CredentialsLoginViewModel.swift in Sources */,
+				FF92EC692D8DF813007132FD /* ProfileViewModel.swift in Sources */,
 				FFFCDA6F2D78C34500681B3B /* DrawingView.swift in Sources */,
 				FF83513B2D5654AB002E64D2 /* ProjectModel.xcdatamodeld in Sources */,
 				FF86A19A2D8430C800FB9FD6 /* PolylineEntity.swift in Sources */,
@@ -451,11 +481,13 @@
 				FFCC17DA2D59108900BF061B /* AddDrawingView.swift in Sources */,
 				FF86A19E2D849C7000FB9FD6 /* LayerEntity.swift in Sources */,
 				FFCC17E82D60CF5500BF061B /* DrawingEntity.swift in Sources */,
+				FF92EC672D8DF54B007132FD /* ProfileView.swift in Sources */,
 				FF86A1A02D84ACFD00FB9FD6 /* AddLayerViewController.swift in Sources */,
 				FF8351312D4F78B0002E64D2 /* TakePhoto.swift in Sources */,
 				FFFCDA712D78C6A900681B3B /* PDFViewController.swift in Sources */,
 				FFCC17F02D660DA700BF061B /* PDFViewer.swift in Sources */,
 				FF994FA92CAAF8D70027A6D3 /* LoginView.swift in Sources */,
+				FF92EC612D8DEDC3007132FD /* CredentialsLoginView.swift in Sources */,
 				FFCC17D62D58F62300BF061B /* DrawingListView.swift in Sources */,
 				FF994FB12CAAFA380027A6D3 /* CreateProjectViewModel.swift in Sources */,
 				FFCC17DC2D59127F00BF061B /* AddDrawingViewModel.swift in Sources */,

@@ -19,24 +19,27 @@ struct ProjectListView: View {
                 Button(action: {
                     // Действие для кнопки настроек
                 }) {
-                    Image(systemName: "gear")
-                        .font(.system(size: 30))
-                        .foregroundColor(.black)
+                    Image("settings")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 30, height: 30)
                         .padding()
                 }
+                
                 Spacer()
-                Button(action: {
-                    // Действие для кнопки профиля
-                }) {
+                
+                Text("Мои проекты")
+                    .font(.largeTitle)
+                
+                Spacer()
+                
+                NavigationLink(destination: ProfileView()) {
                     Image(systemName: "person.crop.circle")
                         .font(.system(size: 30))
                         .foregroundColor(.black)
                         .padding()
                 }
             }
-            
-            Text("Мои проекты")
-                .font(.largeTitle)
             
             List(viewModel.uiState.projects) { project in
                 ProjectRow(project: project, onDelete: {
@@ -79,6 +82,7 @@ struct ProjectListView: View {
         }
     }
 }
+
 
 struct ProjectRow: View {
     let project: Project

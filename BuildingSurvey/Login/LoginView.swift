@@ -23,7 +23,7 @@ struct LoginView: View {
             Text("Работа на объекте")
                 .font(.subheadline)
                 .padding(.bottom, 50)
-            NavigationLink(destination: ProjectListView(viewModel: ProjectListViewModel(repository: repository))) {
+            NavigationLink(destination: CredentialsLoginView(viewModel: CredentialsLoginViewModel(repository: repository))) {
                 Text("Войти")
                     .font(.headline)
                     .padding()
@@ -32,6 +32,8 @@ struct LoginView: View {
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }
+
+
             Spacer()
         }
     }

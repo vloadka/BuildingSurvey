@@ -436,19 +436,19 @@ class GeneralRepository: ObservableObject {
     }
     
     // Удаление слоя по его идентификатору
-    func deleteLayer(withId id: UUID) {
-        let fetchRequest: NSFetchRequest<LayerEntity> = LayerEntity.fetchRequest()
-        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-        
-        do {
-            if let layer = try context.fetch(fetchRequest).first {
-                context.delete(layer)
-                saveContext()
-            }
-        } catch {
-            print("Ошибка удаления слоя: \(error)")
-        }
-    }
+//    func deleteLayer(withId id: UUID) {
+//        let fetchRequest: NSFetchRequest<LayerEntity> = LayerEntity.fetchRequest()
+//        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+//        
+//        do {
+//            if let layer = try context.fetch(fetchRequest).first {
+//                context.delete(layer)
+//                saveContext()
+//            }
+//        } catch {
+//            print("Ошибка удаления слоя: \(error)")
+//        }
+//    }
     
     
     private func saveContext() {
@@ -510,6 +510,61 @@ class GeneralRepository: ObservableObject {
             return []
         }
     }
+    
+    // Добавляем функции удаления для объектов, привязанных к слою
+
+    func deleteLines(forLayer layer: LayerEntity) {
+        for line in layer.linesArray {
+            context.delete(line)
+        }
+    }
+
+    func deletePoints(forLayer layer: LayerEntity) {
+        for point in layer.pointsArray {
+            context.delete(point)
+        }
+    }
+
+    func deletePolylines(forLayer layer: LayerEntity) {
+        for polyline in layer.polylinesArray {
+            context.delete(polyline)
+        }
+    }
+
+    func deleteRectangles(forLayer layer: LayerEntity) {
+        for rectangle in layer.rectanglesArray {
+            context.delete(rectangle)
+        }
+    }
+
+    func deleteTexts(forLayer layer: LayerEntity) {
+        for text in layer.textsArray {
+            context.delete(text)
+        }
+    }
+
+    // Обновлённый метод удаления слоя
+    func deleteLayer(withId id: UUID) {
+        let fetchRequest: NSFetchRequest<LayerEntity> = LayerEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        
+        do {
+            if let layer = try context.fetch(fetchRequest).first {
+                // Удаляем все объекты, связанные с этим слоем
+                deleteLines(forLayer: layer)
+                deletePoints(forLayer: layer)
+                deletePolylines(forLayer: layer)
+                deleteRectangles(forLayer: layer)
+                deleteTexts(forLayer: layer)
+                // Затем удаляем сам слой
+                context.delete(layer)
+                saveContext()
+            }
+        } catch {
+            print("Ошибка удаления слоя: \(error)")
+        }
+    }
+
 
 
 }

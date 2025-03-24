@@ -467,44 +467,102 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
         // MARK: - Режимы работы
-        @objc private func toggleDrawingMode(_ sender: UIButton) {
-            drawingEnabled.toggle()
-            drawingView.isUserInteractionEnabled = drawingEnabled
-            let imageName = drawingEnabled ? "Line_active" : "Line_passive"
-            drawingToggleButton.setImage(UIImage(named: imageName), for: .normal)
-        }
-        
-        @objc private func toggleTopButtonMode(_ sender: UIButton) {
-            topButtonActive.toggle()
-            let imageName = topButtonActive ? "Photo_active_1" : "Photo_passive_1"
-            topToggleButton.setImage(UIImage(named: imageName), for: .normal)
-            photoMarkerTapRecognizer.isEnabled = topButtonActive
-        }
-        
-        @objc private func togglePointMode(_ sender: UIButton) {
-            pointCreationEnabled.toggle()
-            let imageName = pointCreationEnabled ? "point_defect_active" : "point_defect_passive"
-            pointToggleButton.setImage(UIImage(named: imageName), for: .normal)
-            pointCreationTapRecognizer.isEnabled = pointCreationEnabled
-        }
-        
-        @objc private func togglePolylineMode(_ sender: UIButton) {
-            polylineModeEnabled.toggle()
-            let imageName = polylineModeEnabled ? "broken_line_active" : "broken_line_passive"
-            polylineToggleButton.setImage(UIImage(named: imageName), for: .normal)
-            polylineTapRecognizer.isEnabled = polylineModeEnabled
+    @objc private func toggleDrawingMode(_ sender: UIButton) {
+        if !drawingEnabled {
+            // Включаем режим линий и блокируем остальные кнопки
+            drawingEnabled = true
+            drawingView.isUserInteractionEnabled = true
+            drawingToggleButton.setImage(UIImage(named: "Line_active"), for: .normal)
+            disableAllCreationButtons(except: drawingToggleButton)
             
-            // Если режим выключается, отменяем незавершённую полилинию
-            if !polylineModeEnabled {
-                cancelCurrentPolyline()
-            }
+            // Если какой-либо другой режим был активен, убедитесь, что он выключен
+            polylineModeEnabled = false
+            pointCreationEnabled = false
+            textModeEnabled = false
+            rectangleModeEnabled = false
+        } else {
+            // Выключаем режим линий и разблокируем остальные кнопки
+            drawingEnabled = false
+            drawingView.isUserInteractionEnabled = false
+            drawingToggleButton.setImage(UIImage(named: "Line_passive"), for: .normal)
+            enableAllCreationButtons()
         }
+    }
+        
+    @objc private func toggleTopButtonMode(_ sender: UIButton) {
+        if !topButtonActive {
+            topButtonActive = true
+            let imageName = "Photo_active_1"
+            topToggleButton.setImage(UIImage(named: imageName), for: .normal)
+            photoMarkerTapRecognizer.isEnabled = true
+            // Блокируем остальные кнопки, кроме кнопки фото-маркера
+            disableAllCreationButtons(except: topToggleButton)
+        } else {
+            topButtonActive = false
+            let imageName = "Photo_passive_1"
+            topToggleButton.setImage(UIImage(named: imageName), for: .normal)
+            photoMarkerTapRecognizer.isEnabled = false
+            // Разблокируем все кнопки
+            enableAllCreationButtons()
+        }
+    }
+        
+    @objc private func togglePointMode(_ sender: UIButton) {
+        if !pointCreationEnabled {
+            pointCreationEnabled = true
+            pointToggleButton.setImage(UIImage(named: "point_defect_active"), for: .normal)
+            pointCreationTapRecognizer.isEnabled = true
+            disableAllCreationButtons(except: pointToggleButton)
+            
+            drawingEnabled = false
+            polylineModeEnabled = false
+            textModeEnabled = false
+            rectangleModeEnabled = false
+        } else {
+            pointCreationEnabled = false
+            pointToggleButton.setImage(UIImage(named: "point_defect_passive"), for: .normal)
+            pointCreationTapRecognizer.isEnabled = false
+            enableAllCreationButtons()
+        }
+    }
+        
+    @objc private func togglePolylineMode(_ sender: UIButton) {
+        if !polylineModeEnabled {
+            polylineModeEnabled = true
+            polylineToggleButton.setImage(UIImage(named: "broken_line_active"), for: .normal)
+            polylineTapRecognizer.isEnabled = true
+            disableAllCreationButtons(except: polylineToggleButton)
+            
+            drawingEnabled = false
+            pointCreationEnabled = false
+            textModeEnabled = false
+            rectangleModeEnabled = false
+        } else {
+            polylineModeEnabled = false
+            polylineToggleButton.setImage(UIImage(named: "broken_line_passive"), for: .normal)
+            polylineTapRecognizer.isEnabled = false
+            enableAllCreationButtons()
+            cancelCurrentPolyline() // если нужно отменить незавершённую полилинию
+        }
+    }
     
     @objc private func toggleTextMode(_ sender: UIButton) {
-        textModeEnabled.toggle()
-        let imageName = textModeEnabled ? "text_active" : "text_passive"
-        textToggleButton.setImage(UIImage(named: imageName), for: .normal)
-        textTapRecognizer.isEnabled = textModeEnabled
+        if !textModeEnabled {
+            textModeEnabled = true
+            textToggleButton.setImage(UIImage(named: "text_active"), for: .normal)
+            textTapRecognizer.isEnabled = true
+            disableAllCreationButtons(except: textToggleButton)
+            
+            drawingEnabled = false
+            polylineModeEnabled = false
+            pointCreationEnabled = false
+            rectangleModeEnabled = false
+        } else {
+            textModeEnabled = false
+            textToggleButton.setImage(UIImage(named: "text_passive"), for: .normal)
+            textTapRecognizer.isEnabled = false
+            enableAllCreationButtons()
+        }
     }
     
     // MARK: - Обработка фото-маркеров
@@ -662,6 +720,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         cancelCurrentPolyline()
         hidePolylineControlPanel()
         disablePolylineMode()
+        enableAllCreationButtons() // Разблокировать все кнопки создания
     }
     
     private func cancelCurrentPolyline() {
@@ -671,16 +730,17 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     @objc private func savePolylineAction() {
-        // Сохраняем полилинию в открытом виде (без замыкания)
+        // Сохраняем полилинию (без замыкания)
         repository.savePolyline(forDrawing: drawingId, points: currentPolylinePoints, closed: true, layer: activeLayer)
         cancelCurrentPolyline()
         hidePolylineControlPanel()
         disablePolylineMode()
         loadPolylineMarkers() // Сразу показываем сохранённую полилинию
+        enableAllCreationButtons() // Разблокировать все кнопки создания
     }
     
     @objc private func closePolylineAction() {
-        // Добавляем соединение между первой и последней точкой (замыкание)
+        // Замыкаем полилинию, добавляя соединение между первой и последней точкой
         if let first = currentPolylinePoints.first {
             currentPolylinePoints.append(first)
             updatePolylineLayer()
@@ -690,6 +750,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         hidePolylineControlPanel()
         disablePolylineMode()
         loadPolylineMarkers() // Сразу показываем сохранённую полилинию
+        enableAllCreationButtons() // Разблокировать все кнопки создания
     }
     
     // MARK: - Обработка ввода текста
@@ -903,8 +964,22 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     @objc private func deletePhotoMarkerAction(_ sender: UIButton) {
         guard let marker = currentViewingMarker, let markerId = marker.photoEntityId else { return }
         repository.deletePhotoMarker(withId: markerId)
+        // Удаляем маркер из иерархии представлений
         marker.removeFromSuperview()
+        // Обновляем отображение фото-маркеров, чтобы удалённый маркер точно не отображался
+        reloadPhotoMarkersUI()
         dismiss(animated: true)
+    }
+    
+    private func reloadPhotoMarkersUI() {
+        // Удаляем все фото-маркеры из основного представления
+        pdfImageView.subviews.forEach { subview in
+            if subview is PhotoMarkerButton {
+                subview.removeFromSuperview()
+            }
+        }
+        // Заново загружаем фото-маркеры из репозитория (они уже не содержат удалённого маркера)
+        loadPhotoMarkers()
     }
     
     // Новые свойства для работы со слоями
@@ -1101,9 +1176,58 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     @objc private func deleteLayerButtonTapped(_ sender: UIButton) {
         guard let idString = sender.accessibilityIdentifier, let id = UUID(uuidString: idString) else { return }
         repository.deleteLayer(withId: id)
+        
+        // Если удалённый слой является активным, выбираем слой по умолчанию (имя "0")
+        if activeLayer?.id == id {
+            let layersFromRepo = repository.loadLayers(forProject: project)
+            if let defaultLayerEntity = layersFromRepo.first(where: { $0.name == "0" }) {
+                let defaultLayerData = LayerData(
+                    id: defaultLayerEntity.id ?? UUID(),
+                    name: defaultLayerEntity.name ?? "0",
+                    color: defaultLayerEntity.uiColor ?? UIColor.black
+                )
+                activeLayer = defaultLayerData
+                layerButton.backgroundColor = defaultLayerData.color
+                drawingView.currentLineColor = defaultLayerData.color
+            } else {
+                // Если нет слоя "0", можно создать его или установить цвет по умолчанию
+                activeLayer = LayerData(id: UUID(), name: "0", color: .black)
+                layerButton.backgroundColor = .black
+                drawingView.currentLineColor = .black
+            }
+        }
+        
+        updateDrawingView() // Обновляем интерфейс
         hideLayerDropdown()
         showLayerDropdown()
     }
+
+
+    func updateDrawingView() {
+        // Удаляем все CAShapeLayer из pdfContentView.layer
+        pdfContentView.layer.sublayers?.forEach { layer in
+            if layer is CAShapeLayer {
+                layer.removeFromSuperlayer()
+            }
+        }
+        
+        // Удаляем все дочерние представления (subviews) у pdfImageView, где размещаются точки, текстовые метки и фото-маркеры
+        pdfImageView.subviews.forEach { subview in
+            subview.removeFromSuperview()
+        }
+        
+        // Очищаем сохранённые линии в DrawingView (если они хранятся в массиве)
+        drawingView.loadLines([])
+        
+        // Заново загружаем объекты из репозитория – линии, полилинии, точки, тексты, прямоугольники
+        loadSavedLines()
+        loadPolylineMarkers()
+        loadPointMarkers()
+        loadTextMarkers()
+        loadRectangleMarkers()
+    }
+
+
     
     @objc private func addLayerButtonTapped() {
         let addLayerVC = AddLayerViewController()
@@ -1120,11 +1244,21 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     
     // Метод для переключения режима рисования прямоугольника:
     @objc private func toggleRectangleMode(_ sender: UIButton) {
-        rectangleModeEnabled.toggle()
-        let imageName = rectangleModeEnabled ? "rectangle_active" : "rectangle_passive"
-        rectangleToggleButton.setImage(UIImage(named: imageName), for: .normal)
-        rectangleTapRecognizer.isEnabled = rectangleModeEnabled
         if !rectangleModeEnabled {
+            rectangleModeEnabled = true
+            rectangleToggleButton.setImage(UIImage(named: "rectangle_active"), for: .normal)
+            rectangleTapRecognizer.isEnabled = true
+            disableAllCreationButtons(except: rectangleToggleButton)
+            
+            drawingEnabled = false
+            polylineModeEnabled = false
+            pointCreationEnabled = false
+            textModeEnabled = false
+        } else {
+            rectangleModeEnabled = false
+            rectangleToggleButton.setImage(UIImage(named: "rectangle_passive"), for: .normal)
+            rectangleTapRecognizer.isEnabled = false
+            enableAllCreationButtons()
             rectangleFirstPoint = nil
             rectangleLayer?.removeFromSuperlayer()
             rectangleLayer = nil
@@ -1137,7 +1271,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         if rectangleFirstPoint == nil {
             // Сохраняем первую точку как верхний левый угол
             rectangleFirstPoint = location
-            // (опционально: можно отобразить небольшой маркер, чтобы показать первую точку)
+            // (опционально можно отобразить маркер первой точки)
         } else {
             guard let first = rectangleFirstPoint else { return }
             // Определяем координаты так, чтобы первая точка была верхним левым углом, а вторая – нижним правым
@@ -1147,30 +1281,30 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             let height = abs(first.y - location.y)
             let rect = CGRect(x: x, y: y, width: width, height: height)
             
-            // Удаляем предыдущий прямоугольник (если был)
+            // Удаляем временный слой (если был)
             rectangleLayer?.removeFromSuperlayer()
             
-            // Рисуем прямоугольник
+            // Рисуем окончательный прямоугольник
             let layer = CAShapeLayer()
             let strokeColor = activeLayer?.color.cgColor ?? UIColor.red.cgColor
             layer.strokeColor = strokeColor
             layer.lineWidth = 2.0
-            layer.fillColor = UIColor.clear.cgColor     // прозрачное заполнение
+            layer.fillColor = UIColor.clear.cgColor  // прозрачное заполнение
             let path = UIBezierPath(rect: rect)
             layer.path = path.cgPath
             pdfContentView.layer.addSublayer(layer)
-            rectangleLayer = layer
+            // Если требуется, можно сохранить ссылку на слой, но в данном случае необязательно
             
             // Сохраняем прямоугольник в базу данных
             repository.saveRectangle(forDrawing: drawingId, rect: rect, layer: activeLayer)
             
-            // Сбрасываем состояние
+            // Сбрасываем первую точку, чтобы можно было начать новый прямоугольник
             rectangleFirstPoint = nil
-            rectangleModeEnabled = false
-            rectangleToggleButton.setImage(UIImage(named: "rectangle_passive"), for: .normal)
-            rectangleTapRecognizer.isEnabled = false
+            // Важно: не отключаем режим прямоугольника – другие кнопки остаются заблокированными,
+            // а пользователь может продолжать создавать прямоугольники.
         }
     }
+
     
     private func loadRectangleMarkers() {
         let rectangles = repository.loadRectangles(forDrawing: drawingId)  // [RectangleData]
@@ -1184,4 +1318,21 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             pdfContentView.layer.addSublayer(shapeLayer)
         }
     }
+    
+    
+    
+    func disableAllCreationButtons(except activeButton: UIButton) {
+        let creationButtons: [UIButton] = [drawingToggleButton, polylineToggleButton, pointToggleButton, textToggleButton, rectangleToggleButton]
+        for button in creationButtons {
+            if button != activeButton {
+                button.isEnabled = false
+            }
+        }
+    }
+
+    func enableAllCreationButtons() {
+        let creationButtons: [UIButton] = [drawingToggleButton, polylineToggleButton, pointToggleButton, textToggleButton, rectangleToggleButton]
+        creationButtons.forEach { $0.isEnabled = true }
+    }
+
 }

@@ -42,6 +42,7 @@ extension LayerEntity {
     public var linesArray: [LineEntity] {
         return lines?.allObjects as? [LineEntity] ?? []
     }
+
     
     public var pointsArray: [PointEntity] {
         return points?.allObjects as? [PointEntity] ?? []
