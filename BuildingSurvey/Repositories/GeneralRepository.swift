@@ -132,35 +132,29 @@ class GeneralRepository: ObservableObject {
     
     // MARK: - Методы сохранения с поддержкой слоя
     
-    func saveLine(forDrawing drawingId: UUID, start: CGPoint, end: CGPoint, layer: LayerData? = nil) {
-        let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
-        fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
-
-        do {
-            if let drawing = try context.fetch(fetchRequest).first {
-                let line = LineEntity(context: context)
-                line.id = UUID()
-                line.startX = start.x
-                line.startY = start.y
-                line.endX = end.x
-                line.endY = end.y
-                line.drawing = drawing
-                if let layerData = layer {
-                    if let layerEntity = getLayerEntity(withId: layerData.id) {
-                        print("Устанавливаем слой с цветом: \(layerEntity.uiColor ?? UIColor.clear)")
+    func saveLine(forDrawing drawingId: UUID, lineId: UUID, start: CGPoint, end: CGPoint, layer: LayerData? = nil) {
+            let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+            
+            do {
+                if let drawing = try context.fetch(fetchRequest).first {
+                    let line = LineEntity(context: context)
+                    // Используем переданный идентификатор вместо генерации нового
+                    line.id = lineId
+                    line.startX = start.x
+                    line.startY = start.y
+                    line.endX = end.x
+                    line.endY = end.y
+                    line.drawing = drawing
+                    if let layerData = layer, let layerEntity = getLayerEntity(withId: layerData.id) {
                         line.layer = layerEntity
-                    } else {
-                        print("Слой не найден для id \(layerData.id)")
                     }
+                    saveContext()
                 }
-                saveContext()
+            } catch {
+                print("Ошибка сохранения линии: \(error)")
             }
-        } catch {
-            print("Ошибка сохранения линии: \(error)")
         }
-    }
-
-
     
     func loadLines(for drawingId: UUID) -> [LineData] {
         let fetchRequest: NSFetchRequest<LineEntity> = LineEntity.fetchRequest()
@@ -170,9 +164,8 @@ class GeneralRepository: ObservableObject {
             return lines.map { line in
                 let start = CGPoint(x: line.startX, y: line.startY)
                 let end = CGPoint(x: line.endX, y: line.endY)
-                // Если связь с слоем установлена, берем uiColor; иначе – используем черный цвет.
                 let color = line.layer?.uiColor ?? UIColor.black
-                return LineData(start: start, end: end, color: color)
+                return LineData(id: line.id ?? UUID(), start: start, end: end, color: color)
             }
         } catch {
             print("Ошибка загрузки линий: \(error)")
@@ -181,6 +174,18 @@ class GeneralRepository: ObservableObject {
     }
 
 
+    func deleteLine(withId id: UUID) {
+        let fetchRequest: NSFetchRequest<LineEntity> = LineEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        do {
+            if let line = try context.fetch(fetchRequest).first {
+                context.delete(line)
+                saveContext()
+            }
+        } catch {
+            print("Ошибка удаления линии: \(error)")
+        }
+    }
     
     func savePhotoMarker(forDrawing drawingId: UUID,
                          withId id: UUID,
@@ -242,12 +247,13 @@ class GeneralRepository: ObservableObject {
         }
     }
     
-    func savePoint(forDrawing drawingId: UUID, withId id: UUID = UUID(), coordinate: CGPoint, layer: LayerData? = nil) {
+    func savePoint(forDrawing drawingId: UUID, coordinate: CGPoint, layer: LayerData? = nil) -> UUID? {
         let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
         do {
             if let drawing = try context.fetch(fetchRequest).first {
                 let pointEntity = PointEntity(context: context)
+                let id = UUID()  // Генерируем UUID здесь
                 pointEntity.id = id
                 pointEntity.coordinateX = coordinate.x
                 pointEntity.coordinateY = coordinate.y
@@ -256,11 +262,14 @@ class GeneralRepository: ObservableObject {
                     pointEntity.layer = layerEntity
                 }
                 saveContext()
+                return id  // Возвращаем сгенерированный UUID
             } else {
                 print("Ошибка: Чертеж с id \(drawingId) не найден.")
+                return nil
             }
         } catch {
             print("Ошибка сохранения точки: \(error)")
+            return nil
         }
     }
 
@@ -270,9 +279,10 @@ class GeneralRepository: ObservableObject {
         do {
             let pointEntities = try context.fetch(fetchRequest)
             return pointEntities.compactMap { entity in
+                guard let id = entity.id else { return nil }
                 let coordinate = CGPoint(x: entity.coordinateX, y: entity.coordinateY)
                 let color = entity.layer?.uiColor ?? UIColor.blue
-                return PointData(coordinate: coordinate, color: color)
+                return PointData(id: id, coordinate: coordinate, color: color)
             }
         } catch {
             print("Ошибка загрузки точек: \(error)")
@@ -280,33 +290,42 @@ class GeneralRepository: ObservableObject {
         }
     }
 
-    
-    func savePolyline(forDrawing drawingId: UUID, points: [CGPoint], closed: Bool, layer: LayerData? = nil) {
-        let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
-        fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
-        
+    func deletePoint(withId id: UUID) {
+        let fetchRequest: NSFetchRequest<PointEntity> = PointEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         do {
-            if let drawing = try context.fetch(fetchRequest).first {
-                let polyline = PolylineEntity(context: context)
-                polyline.id = UUID()
-                polyline.closed = closed
-                if let data = try? NSKeyedArchiver.archivedData(withRootObject: points, requiringSecureCoding: false) {
-                    polyline.pointsData = data
-                } else {
-                    print("Ошибка сериализации точек для полилинии")
-                }
-                polyline.drawing = drawing
-                if let layerData = layer, let layerEntity = getLayerEntity(withId: layerData.id) {
-                    polyline.layer = layerEntity
-                }
+            if let point = try context.fetch(fetchRequest).first {
+                context.delete(point)
                 saveContext()
-            } else {
-                print("Ошибка: Чертеж с id \(drawingId) не найден.")
             }
         } catch {
-            print("Ошибка сохранения полилинии: \(error)")
+            print("Ошибка удаления точки: \(error)")
         }
     }
+    
+    func savePolyline(forDrawing drawingId: UUID, polylineId: UUID, points: [CGPoint], closed: Bool, layer: LayerData? = nil) {
+            let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+            
+            do {
+                if let drawing = try context.fetch(fetchRequest).first {
+                    let polyline = PolylineEntity(context: context)
+                    // Используем переданный идентификатор
+                    polyline.id = polylineId
+                    polyline.closed = closed
+                    if let data = try? NSKeyedArchiver.archivedData(withRootObject: points, requiringSecureCoding: false) {
+                        polyline.pointsData = data
+                    }
+                    polyline.drawing = drawing
+                    if let layerData = layer, let layerEntity = getLayerEntity(withId: layerData.id) {
+                        polyline.layer = layerEntity
+                    }
+                    saveContext()
+                }
+            } catch {
+                print("Ошибка сохранения полилинии: \(error)")
+            }
+        }
     
     func loadPolylines(forDrawing drawingId: UUID) -> [PolylineData] {
         let fetchRequest: NSFetchRequest<PolylineEntity> = PolylineEntity.fetchRequest()
@@ -315,10 +334,10 @@ class GeneralRepository: ObservableObject {
             let polylineEntities = try context.fetch(fetchRequest)
             return polylineEntities.compactMap { entity in
                 guard let data = entity.pointsData,
-                      let points = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data) as? [CGPoint]
-                else { return nil }
+                      let points = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data) as? [CGPoint],
+                      let id = entity.id else { return nil }
                 let color = entity.layer?.uiColor ?? UIColor.green
-                return PolylineData(points: points, closed: entity.closed, color: color)
+                return PolylineData(id: id, points: points, closed: entity.closed, color: color)
             }
         } catch {
             print("Ошибка загрузки полилиний: \(error)")
@@ -326,6 +345,18 @@ class GeneralRepository: ObservableObject {
         }
     }
 
+    func deletePolyline(withId id: UUID) {
+           let fetchRequest: NSFetchRequest<PolylineEntity> = PolylineEntity.fetchRequest()
+           fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+           do {
+               if let polyline = try context.fetch(fetchRequest).first {
+                   context.delete(polyline)
+                   saveContext()
+               }
+           } catch {
+               print("Ошибка удаления полилинии: \(error)")
+           }
+       }
     
     func saveText(forDrawing drawingId: UUID, text: String, coordinate: CGPoint, layer: LayerData? = nil) {
         let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
@@ -356,14 +387,28 @@ class GeneralRepository: ObservableObject {
         do {
             let textEntities = try context.fetch(fetchRequest)
             return textEntities.compactMap { entity in
-                guard let text = entity.text else { return nil }
+                guard let id = entity.id, let text = entity.text else { return nil }
                 let coordinate = CGPoint(x: entity.coordinateX, y: entity.coordinateY)
                 let color = entity.layer?.uiColor ?? UIColor.blue
-                return TextData(text: text, coordinate: coordinate, color: color)
+                return TextData(id: id, text: text, coordinate: coordinate, color: color)
             }
         } catch {
             print("Ошибка загрузки текстовых меток: \(error)")
             return []
+        }
+    }
+
+    
+    func deleteText(withId id: UUID) {
+        let fetchRequest: NSFetchRequest<TextEntity> = TextEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        do {
+            if let text = try context.fetch(fetchRequest).first {
+                context.delete(text)
+                saveContext()
+            }
+        } catch {
+            print("Ошибка удаления текстовой метки: \(error)")
         }
     }
 
@@ -435,22 +480,6 @@ class GeneralRepository: ObservableObject {
         }
     }
     
-    // Удаление слоя по его идентификатору
-//    func deleteLayer(withId id: UUID) {
-//        let fetchRequest: NSFetchRequest<LayerEntity> = LayerEntity.fetchRequest()
-//        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-//        
-//        do {
-//            if let layer = try context.fetch(fetchRequest).first {
-//                context.delete(layer)
-//                saveContext()
-//            }
-//        } catch {
-//            print("Ошибка удаления слоя: \(error)")
-//        }
-//    }
-    
-    
     private func saveContext() {
         CoreDataManager.shared.saveContext()
     }
@@ -500,14 +529,29 @@ class GeneralRepository: ObservableObject {
         fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
         do {
             let rectangleEntities = try context.fetch(fetchRequest)
-            return rectangleEntities.map { rectangle in
+            return rectangleEntities.compactMap { rectangle in
+                guard let id = rectangle.id else { return nil }
                 let rect = CGRect(x: rectangle.x, y: rectangle.y, width: rectangle.width, height: rectangle.height)
                 let color = rectangle.layer?.uiColor ?? UIColor.red
-                return RectangleData(rect: rect, color: color)
+                return RectangleData(id: id, rect: rect, color: color)
             }
         } catch {
             print("Ошибка загрузки прямоугольников: \(error)")
             return []
+        }
+    }
+
+    
+    func deleteRectangle(withId id: UUID) {
+        let fetchRequest: NSFetchRequest<RectangleEntity> = RectangleEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        do {
+            if let rect = try context.fetch(fetchRequest).first {
+                context.delete(rect)
+                saveContext()
+            }
+        } catch {
+            print("Ошибка удаления прямоугольника: \(error)")
         }
     }
     
