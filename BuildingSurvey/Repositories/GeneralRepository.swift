@@ -412,7 +412,6 @@ class GeneralRepository: ObservableObject {
         }
     }
 
-    
     func saveCoverImage(forProjectId projectId: UUID, image: UIImage) {
         let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", projectId as CVarArg)
@@ -541,7 +540,6 @@ class GeneralRepository: ObservableObject {
         }
     }
 
-    
     func deleteRectangle(withId id: UUID) {
         let fetchRequest: NSFetchRequest<RectangleEntity> = RectangleEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
@@ -556,7 +554,6 @@ class GeneralRepository: ObservableObject {
     }
     
     // Добавляем функции удаления для объектов, привязанных к слою
-
     func deleteLines(forLayer layer: LayerEntity) {
         for line in layer.linesArray {
             context.delete(line)
@@ -606,6 +603,24 @@ class GeneralRepository: ObservableObject {
             }
         } catch {
             print("Ошибка удаления слоя: \(error)")
+        }
+    }
+    
+    func saveAudio(forProject project: Project, audioData: Data, timestamp: Date) {
+        let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", project.id as CVarArg)
+        
+        do {
+            if let projectEntity = try context.fetch(fetchRequest).first {
+                let audioEntity = AudioEntity(context: context)
+                audioEntity.id = UUID()
+                audioEntity.audioData = audioData
+                audioEntity.timestamp = timestamp
+                audioEntity.project = projectEntity
+                saveContext()
+            }
+        } catch {
+            print("Ошибка сохранения аудио: \(error)")
         }
     }
 

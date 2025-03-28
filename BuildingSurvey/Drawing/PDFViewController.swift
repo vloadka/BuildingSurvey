@@ -7,6 +7,8 @@
 
 import UIKit
 import CoreGraphics
+import AVFAudio
+import CoreData
 
 // Класс для маркера с фотографией
 class PhotoMarkerButton: UIButton {
@@ -70,7 +72,13 @@ struct PointData {
     let color: UIColor
 }
 
-class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate {
+struct AudioData {
+    let id: UUID
+    let audioData: Data
+    let timestamp: Date
+}
+
+class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate, AVAudioRecorderDelegate {
     // Исходные свойства
     private let pdfURL: URL
     private let drawingId: UUID
@@ -126,6 +134,13 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     
     private var currentPolylineId: UUID?
     
+    // Объявляем переменную для кнопки аудио-записи
+    var audioRecordingButton: UIButton!
+    // Объявляем переменную для отслеживания состояния записи аудио
+    var isAudioRecordingActive = false
+    var audioRecorder: AVAudioRecorder?
+    var recordingStatusLabel: UILabel?
+    
     // Ключ для сохранения зума
     private var zoomScaleKey: String {
         return "pdfZoomScale_\(drawingId.uuidString)"
@@ -147,7 +162,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         navigationItem.largeTitleDisplayMode = .always
         
         setupPanels()
@@ -207,7 +221,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         
         // Загрузка фото-маркеров, точек, полилиний и текстовых меток происходит в viewDidLayoutSubviews, когда установлены размеры
     }
-
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
@@ -245,28 +258,70 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     // MARK: - Настройка интерфейса
     private func setupPanels() {
         let panelHeight: CGFloat = 60.0
-        
-        topPanel = UIView()
-        topPanel.translatesAutoresizingMaskIntoConstraints = false
-        topPanel.backgroundColor = .white
-        view.addSubview(topPanel)
-        
-        bottomPanel = UIView()
-        bottomPanel.translatesAutoresizingMaskIntoConstraints = false
-        bottomPanel.backgroundColor = .white
-        view.addSubview(bottomPanel)
-        
-        NSLayoutConstraint.activate([
-            topPanel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            topPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            topPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            topPanel.heightAnchor.constraint(equalToConstant: panelHeight),
             
-            bottomPanel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            bottomPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            bottomPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            bottomPanel.heightAnchor.constraint(equalToConstant: panelHeight)
-        ])
+            // Создаём верхнюю и нижнюю панели
+            topPanel = UIView()
+            topPanel.translatesAutoresizingMaskIntoConstraints = false
+            topPanel.backgroundColor = .white
+            view.addSubview(topPanel)
+            
+            bottomPanel = UIView()
+            bottomPanel.translatesAutoresizingMaskIntoConstraints = false
+            bottomPanel.backgroundColor = .white
+            view.addSubview(bottomPanel)
+            
+            NSLayoutConstraint.activate([
+                topPanel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+                topPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                topPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                topPanel.heightAnchor.constraint(equalToConstant: panelHeight),
+                
+                bottomPanel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+                bottomPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                bottomPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                bottomPanel.heightAnchor.constraint(equalToConstant: panelHeight)
+            ])
+            
+            // Добавляем кнопку настроек на верхнюю панель
+            let topIconButton = UIButton(type: .custom)
+            topIconButton.translatesAutoresizingMaskIntoConstraints = false
+            topIconButton.setImage(UIImage(named: "settings"), for: .normal)
+            topPanel.addSubview(topIconButton)
+            
+            // Добавляем кнопку фото-маркера на верхнюю панель
+            topToggleButton = UIButton(type: .custom)
+            topToggleButton.translatesAutoresizingMaskIntoConstraints = false
+            topToggleButton.setImage(UIImage(named: "Photo_passive_1"), for: .normal)
+            topToggleButton.addTarget(self, action: #selector(toggleTopButtonMode(_:)), for: .touchUpInside)
+            topPanel.addSubview(topToggleButton)
+            
+            // Добавляем кнопку аудио-записи на верхнюю панель
+            audioRecordingButton = UIButton(type: .custom)
+            audioRecordingButton.translatesAutoresizingMaskIntoConstraints = false
+            audioRecordingButton.setImage(UIImage(named: "audio_start"), for: .normal)
+            audioRecordingButton.addTarget(self, action: #selector(toggleAudioRecording(_:)), for: .touchUpInside)
+            topPanel.addSubview(audioRecordingButton)
+            
+            // Устанавливаем констрейнты для кнопок на верхней панели
+            NSLayoutConstraint.activate([
+                // Кнопка настроек слева
+                topIconButton.leadingAnchor.constraint(equalTo: topPanel.leadingAnchor, constant: 16),
+                topIconButton.centerYAnchor.constraint(equalTo: topPanel.centerYAnchor),
+                topIconButton.heightAnchor.constraint(equalToConstant: 30),
+                topIconButton.widthAnchor.constraint(equalToConstant: 30),
+                
+                // Кнопка фото-маркера справа
+                topToggleButton.trailingAnchor.constraint(equalTo: topPanel.trailingAnchor, constant: -16),
+                topToggleButton.centerYAnchor.constraint(equalTo: topPanel.centerYAnchor),
+                topToggleButton.heightAnchor.constraint(equalToConstant: 30),
+                topToggleButton.widthAnchor.constraint(equalToConstant: 30),
+                
+                // Кнопка аудио-записи располагается между ними
+                audioRecordingButton.trailingAnchor.constraint(equalTo: topToggleButton.leadingAnchor, constant: -16),
+                audioRecordingButton.centerYAnchor.constraint(equalTo: topPanel.centerYAnchor),
+                audioRecordingButton.widthAnchor.constraint(equalToConstant: 30),
+                audioRecordingButton.heightAnchor.constraint(equalToConstant: 30)
+            ])
     }
     
     private func setupScrollViewAndContent() {
@@ -368,7 +423,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         ])
     }
 
-    
     private func setupButtons() {
         // Кнопка для работы со слоями
             setupLayerButton()
@@ -468,7 +522,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             topToggleButton.widthAnchor.constraint(equalToConstant: 30)
         ])
     }
-    
+        
     private func setupPhotoMarkerTapRecognizer() {
         photoMarkerTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handlePhotoMarkerTap(_:)))
         photoMarkerTapRecognizer.isEnabled = false
@@ -500,7 +554,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             pdfContentView.layer.addSublayer(lineLayer)
         }
     }
-
     
     // Новый метод для загрузки полилиний
     private func loadPolylineMarkers() {
@@ -553,9 +606,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             pdfImageView.bringSubviewToFront(label)
         }
     }
-
-
-
     
     // MARK: - UIScrollViewDelegate
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {
@@ -715,7 +765,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
     }
 
-    
     // MARK: - Обработка создания полилинии
     @objc private func handlePolylineTap(_ sender: UITapGestureRecognizer) {
         let location = sender.location(in: pdfContentView)
@@ -755,7 +804,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         // Сохраняем массив точек в слое для точного вычисления расстояния
         currentPolylineLayer?.setValue(currentPolylinePoints, forKey: "points")
     }
-
     
     private func showPolylineControlPanel() {
         // Скрываем все кнопки в нижней панели
@@ -844,7 +892,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         currentPolylineId = nil
     }
 
-    
     @objc private func savePolylineAction() {
         guard let polylineId = currentPolylineId else { return }
         // Сохраняем полилинию с внешним идентификатором
@@ -895,8 +942,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         present(alert, animated: true, completion: nil)
     }
 
-    
-    
     // MARK: - Работа с камерой
     private func presentCamera() {
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else { return }
@@ -1020,9 +1065,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
         return img
     }
-
-
-
     
     // MARK: - Загрузка фото-маркеров
     private func loadPhotoMarkers() {
@@ -1070,8 +1112,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             pdfImageView.bringSubviewToFront(marker)
         }
     }
-
-
     
     // MARK: - Загрузка текстовых меток
     
@@ -1204,7 +1244,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         stackView.addArrangedSubview(addLayerButton)
     }
 
-    
+
     private func hideLayerDropdown() {
         layerDropdownView?.removeFromSuperview()
         layerDropdownView = nil
@@ -1448,11 +1488,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
     }
 
-    
-    
-    
     func disableAllCreationButtons(except activeButton: UIButton) {
-        let creationButtons: [UIButton] = [drawingToggleButton, polylineToggleButton, pointToggleButton, textToggleButton, rectangleToggleButton,eraserToggleButton]
+        let creationButtons: [UIButton] = [topToggleButton, drawingToggleButton, polylineToggleButton, pointToggleButton, textToggleButton, rectangleToggleButton, eraserToggleButton]
         for button in creationButtons {
             if button != activeButton {
                 button.isEnabled = false
@@ -1461,11 +1498,9 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
 
     func enableAllCreationButtons() {
-        let creationButtons: [UIButton] = [drawingToggleButton, polylineToggleButton, pointToggleButton, textToggleButton, rectangleToggleButton, eraserToggleButton]
+        let creationButtons: [UIButton] = [topToggleButton, drawingToggleButton, polylineToggleButton, pointToggleButton, textToggleButton, rectangleToggleButton, eraserToggleButton]
         creationButtons.forEach { $0.isEnabled = true }
     }
-    
-    
     
     // Функция для установки кнопки ластика (вызывается из setupButtons())
     private func setupEraserButton() {
@@ -1627,8 +1662,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
     }
 
-
-    
     func distanceFromPoint(_ point: CGPoint, toSegmentFrom p1: CGPoint, to p2: CGPoint) -> CGFloat {
         let dx = p2.x - p1.x
         let dy = p2.y - p1.y
@@ -1637,5 +1670,106 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         let projection = CGPoint(x: p1.x + t * dx, y: p1.y + t * dy)
         return hypot(point.x - projection.x, point.y - projection.y)
     }
+    
+    @objc private func toggleAudioRecording(_ sender: UIButton) {
+        if !isAudioRecordingActive {
+            // Запускаем запись аудио
+            isAudioRecordingActive = true
+            audioRecordingButton.setImage(UIImage(named: "audio_stop"), for: .normal)
+            showRecordingStatus(with: "Идет запись…")
+            disableAllCreationButtons(except: audioRecordingButton)
+            startAudioRecording()
+        } else {
+            // Сохраняем URL записи перед остановкой
+            guard let recorder = audioRecorder else { return }
+            let recordingURL = recorder.url
+            
+            // Останавливаем запись аудио
+            isAudioRecordingActive = false
+            audioRecordingButton.setImage(UIImage(named: "audio_start"), for: .normal)
+            stopAudioRecording()
+            showRecordingStatus(with: "Запись сохранена")
+            enableAllCreationButtons()
+            
+            // Читаем аудиоданные по сохраненному URL
+            if let audioData = try? Data(contentsOf: recordingURL) {
+                repository.saveAudio(forProject: project, audioData: audioData, timestamp: Date())
+            }
+        }
+    }
 
+    private func startAudioRecording() {
+            let session = AVAudioSession.sharedInstance()
+            do {
+                try session.setCategory(.playAndRecord, mode: .default)
+                try session.setActive(true)
+                
+                let tempDir = NSTemporaryDirectory()
+                let filePath = tempDir + "/recording-\(UUID().uuidString).m4a"
+                let url = URL(fileURLWithPath: filePath)
+                
+                let settings: [String: Any] = [
+                    AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                    AVSampleRateKey: 12000,
+                    AVNumberOfChannelsKey: 1,
+                    AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+                ]
+                
+                audioRecorder = try AVAudioRecorder(url: url, settings: settings)
+                audioRecorder?.delegate = self
+                audioRecorder?.record()
+            } catch {
+                print("Ошибка при запуске записи аудио: \(error)")
+            }
+        }
+
+    private func stopAudioRecording() {
+        audioRecorder?.stop()
+        audioRecorder = nil
+    }
+    
+    private func showRecordingStatus(with message: String) {
+        // Отобразите временное уведомление (например, лейбл в центре экрана)
+        recordingStatusLabel?.removeFromSuperview()
+        recordingStatusLabel = UILabel()
+        recordingStatusLabel?.translatesAutoresizingMaskIntoConstraints = false
+        recordingStatusLabel?.text = message
+        recordingStatusLabel?.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        recordingStatusLabel?.textColor = .white
+        recordingStatusLabel?.textAlignment = .center
+        if let statusLabel = recordingStatusLabel {
+            view.addSubview(statusLabel)
+            NSLayoutConstraint.activate([
+                statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                statusLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                statusLabel.widthAnchor.constraint(equalToConstant: 200),
+                statusLabel.heightAnchor.constraint(equalToConstant: 40)
+            ])
+            // Убираем уведомление через 2 секунды
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                statusLabel.removeFromSuperview()
+            }
+        }
+    }
+    
+    // вывод бд аудио в консоль
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        printAudioRecords()
+    }
+    
+    private func printAudioRecords() {
+        let fetchRequest: NSFetchRequest<AudioEntity> = AudioEntity.fetchRequest()
+        do {
+            let audioEntities = try CoreDataManager.shared.context.fetch(fetchRequest)
+            for audio in audioEntities {
+                let id = audio.id ?? UUID()
+                let timestamp = audio.timestamp ?? Date()
+                let dataLength = audio.audioData?.count ?? 0
+                print("Audio id: \(id), timestamp: \(timestamp), data length: \(dataLength)")
+            }
+        } catch {
+            print("Ошибка выборки аудио: \(error)")
+        }
+    }
 }

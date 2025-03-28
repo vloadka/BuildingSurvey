@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22758" systemVersion="23E224" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+    <entity name="AudioEntity" representedClassName="AudioEntity" syncable="YES">
+        <attribute name="audioData" optional="YES" attributeType="Binary"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="project" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ProjectEntity" inverseName="audio" inverseEntity="ProjectEntity"/>
+    </entity>
     <entity name="DrawingEntity" representedClassName="DrawingEntity" syncable="YES">
         <attribute name="filePath" optional="YES" attributeType="String"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
@@ -61,6 +67,7 @@
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="projectFilePath" optional="YES" attributeType="String"/>
+        <relationship name="audio" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AudioEntity" inverseName="project" inverseEntity="AudioEntity"/>
         <relationship name="drawings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="project" inverseEntity="DrawingEntity"/>
         <relationship name="layers" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LayerEntity" inverseName="project" inverseEntity="LayerEntity"/>
     </entity>

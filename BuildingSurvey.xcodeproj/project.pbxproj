@@ -25,6 +25,7 @@
 		FF92EC632D8DF10B007132FD /* CredentialsLoginViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF92EC622D8DF10B007132FD /* CredentialsLoginViewModel.swift */; };
 		FF92EC672D8DF54B007132FD /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF92EC662D8DF54B007132FD /* ProfileView.swift */; };
 		FF92EC692D8DF813007132FD /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF92EC682D8DF813007132FD /* ProfileViewModel.swift */; };
+		FF92EC6B2D9477B4007132FD /* AudioEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF92EC6A2D9477B4007132FD /* AudioEntity.swift */; };
 		FF994F7F2C9B55E10027A6D3 /* BuildingSurveyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */; };
 		FF994F812C9B55E10027A6D3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994F802C9B55E10027A6D3 /* ContentView.swift */; };
 		FF994F832C9B55E30027A6D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FF994F822C9B55E30027A6D3 /* Assets.xcassets */; };
@@ -93,6 +94,7 @@
 		FF92EC622D8DF10B007132FD /* CredentialsLoginViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialsLoginViewModel.swift; sourceTree = "<group>"; };
 		FF92EC662D8DF54B007132FD /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		FF92EC682D8DF813007132FD /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
+		FF92EC6A2D9477B4007132FD /* AudioEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEntity.swift; sourceTree = "<group>"; };
 		FF994F7B2C9B55E10027A6D3 /* BuildingSurvey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuildingSurvey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF994F7E2C9B55E10027A6D3 /* BuildingSurveyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildingSurveyApp.swift; sourceTree = "<group>"; };
 		FF994F802C9B55E10027A6D3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -177,6 +179,7 @@
 				FF86A19B2D843E1500FB9FD6 /* TextEntity.swift */,
 				FF86A19D2D849C7000FB9FD6 /* LayerEntity.swift */,
 				FF2BE6F32D8A179300ED8FB4 /* RectangleEntity.swift */,
+				FF92EC6A2D9477B4007132FD /* AudioEntity.swift */,
 			);
 			path = bd;
 			sourceTree = "<group>";
@@ -488,6 +491,7 @@
 				FFCC17F02D660DA700BF061B /* PDFViewer.swift in Sources */,
 				FF994FA92CAAF8D70027A6D3 /* LoginView.swift in Sources */,
 				FF92EC612D8DEDC3007132FD /* CredentialsLoginView.swift in Sources */,
+				FF92EC6B2D9477B4007132FD /* AudioEntity.swift in Sources */,
 				FFCC17D62D58F62300BF061B /* DrawingListView.swift in Sources */,
 				FF994FB12CAAFA380027A6D3 /* CreateProjectViewModel.swift in Sources */,
 				FFCC17DC2D59127F00BF061B /* AddDrawingViewModel.swift in Sources */,
