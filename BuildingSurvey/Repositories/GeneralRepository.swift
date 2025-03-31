@@ -606,7 +606,7 @@ class GeneralRepository: ObservableObject {
         }
     }
     
-    func saveAudio(forProject project: Project, audioData: Data, timestamp: Date) {
+    func saveAudio(forProject project: Project, audioData: Data, timestamp: Date, drawingName: String) {
         let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", project.id as CVarArg)
         
@@ -616,6 +616,7 @@ class GeneralRepository: ObservableObject {
                 audioEntity.id = UUID()
                 audioEntity.audioData = audioData
                 audioEntity.timestamp = timestamp
+                audioEntity.drawingName = drawingName  // сохраняем название чертежа
                 audioEntity.project = projectEntity
                 saveContext()
             }
@@ -625,6 +626,37 @@ class GeneralRepository: ObservableObject {
     }
 
 
+    func loadAudio(for project: Project) -> [AudioNote] {
+        let fetchRequest: NSFetchRequest<AudioEntity> = AudioEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "project.id == %@", project.id as CVarArg)
+        do {
+            let audioEntities = try context.fetch(fetchRequest)
+            return audioEntities.compactMap { entity in
+                guard let id = entity.id,
+                      let audioData = entity.audioData,
+                      let timestamp = entity.timestamp else {
+                    return nil
+                }
+                return AudioNote(id: id, audioData: audioData, timestamp: timestamp, drawingName: entity.drawingName ?? "")
+            }
+        } catch {
+            print("Ошибка загрузки аудио: \(error)")
+            return []
+        }
+    }
+
+    func deleteAudio(withId id: UUID) {
+        let fetchRequest: NSFetchRequest<AudioEntity> = AudioEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        do {
+            if let entity = try context.fetch(fetchRequest).first {
+                context.delete(entity)
+                saveContext()
+            }
+        } catch {
+            print("Ошибка удаления аудио: \(error)")
+        }
+    }
 
 }
 

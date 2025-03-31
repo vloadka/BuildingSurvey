@@ -12,6 +12,7 @@ struct AudioNote: Identifiable, Hashable {
     let id: UUID
     let audioData: Data
     let timestamp: Date
+    let drawingName: String
 }
 
 class AudioNotesViewModel: ObservableObject {
@@ -33,7 +34,6 @@ class AudioNotesViewModel: ObservableObject {
             }
         }
     }
-
     
     func deleteAudio(note: AudioNote) {
         repository.deleteAudio(withId: note.id)

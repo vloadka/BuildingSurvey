@@ -14,12 +14,21 @@ struct AudioNoteRow: View, Hashable {
 
     @State private var audioPlayer: AVAudioPlayer?
     @State private var isPlaying: Bool = false
+    @State private var showDeleteAlert: Bool = false
+    @State private var audioDelegate: AudioPlayerDelegateWrapper?  // сохраняем делегата
+
+    // Форматтер для времени:
+    private var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }
 
     var body: some View {
         HStack {
-            Text(note.timestamp, style: .time)
+            Text("\(timeFormatter.string(from: note.timestamp)) - \(note.drawingName)")
             Spacer()
-            // Кнопка воспроизведения / остановки
+            // Кнопка воспроизведения/остановки
             Button(action: {
                 if isPlaying {
                     audioPlayer?.stop()
@@ -27,9 +36,12 @@ struct AudioNoteRow: View, Hashable {
                 } else {
                     do {
                         audioPlayer = try AVAudioPlayer(data: note.audioData)
-                        audioPlayer?.delegate = AudioPlayerDelegateWrapper {
-                            isPlaying = false
+                        // Создаём и сохраняем делегата, чтобы он не деаллоцировался
+                        let delegate = AudioPlayerDelegateWrapper {
+                            self.isPlaying = false
                         }
+                        self.audioDelegate = delegate
+                        audioPlayer?.delegate = delegate
                         audioPlayer?.play()
                         isPlaying = true
                     } catch {
@@ -42,19 +54,29 @@ struct AudioNoteRow: View, Hashable {
             }
             .buttonStyle(PlainButtonStyle())
 
-            // Кнопка удаления
+            // Кнопка удаления с уведомлением
             Button(action: {
                 if isPlaying {
                     audioPlayer?.stop()
                     isPlaying = false
                 }
-                onDelete()
+                showDeleteAlert = true
             }) {
                 Image(systemName: "trash")
                     .foregroundColor(.red)
                     .frame(width: 24, height: 24)
             }
             .buttonStyle(PlainButtonStyle())
+            .alert(isPresented: $showDeleteAlert) {
+                Alert(
+                    title: Text("Удалить аудиозаметку?"),
+                    message: Text("Вы точно хотите удалить аудиозаметку? Это действие невозможно отменить."),
+                    primaryButton: .destructive(Text("Удалить")) {
+                        onDelete()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
         }
         .padding(.vertical, 4)
     }
@@ -74,7 +96,8 @@ class AudioPlayerDelegateWrapper: NSObject, AVAudioPlayerDelegate {
         self.onFinish = onFinish
     }
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        onFinish()
+        DispatchQueue.main.async {
+            self.onFinish()
+        }
     }
 }
-

@@ -22,18 +22,10 @@ struct AudioNotesView: View {
                     .padding()
             } else {
                 List {
-                    ForEach(viewModel.audioNotes, id: \.self) { note in
-                        HStack {
-                            // Выводим время записи (можно настроить формат по необходимости)
-                            Text(note.timestamp, style: .time)
-                            Spacer()
-                            Button(action: {
-                                viewModel.deleteAudio(note: note)
-                            }) {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
-                            }
-                        }
+                    ForEach(viewModel.audioNotes, id: \.id) { note in
+                        AudioNoteRow(note: note, onDelete: {
+                            viewModel.deleteAudio(note: note)
+                        })
                     }
                 }
             }
@@ -41,6 +33,13 @@ struct AudioNotesView: View {
         .onAppear {
             viewModel.loadAudioNotes()
         }
+    }
+}
+
+struct AudioNotesView_Previews: PreviewProvider {
+    static var previews: some View {
+        // Здесь можно передать тестовый проект и репозиторий
+        AudioNotesView(project: Project(id: UUID(), name: "Test Project", coverImageData: nil), repository: GeneralRepository())
     }
 }
 

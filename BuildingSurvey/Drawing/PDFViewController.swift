@@ -1671,57 +1671,72 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         return hypot(point.x - projection.x, point.y - projection.y)
     }
     
+    private func getDrawingName(for drawingId: UUID) -> String {
+        // Загружаем все чертежи для текущего проекта
+        let drawings = repository.loadDrawings(for: project)
+        // Ищем чертёж по идентификатору
+        if let drawing = drawings.first(where: { $0.id == drawingId }) {
+            return drawing.name
+        }
+        // Если чертёж не найден, возвращаем значение по умолчанию
+        return "Drawing"
+    }
+    
     @objc private func toggleAudioRecording(_ sender: UIButton) {
         if !isAudioRecordingActive {
-            // Запускаем запись аудио
             isAudioRecordingActive = true
             audioRecordingButton.setImage(UIImage(named: "audio_stop"), for: .normal)
             showRecordingStatus(with: "Идет запись…")
             disableAllCreationButtons(except: audioRecordingButton)
             startAudioRecording()
         } else {
-            // Сохраняем URL записи перед остановкой
             guard let recorder = audioRecorder else { return }
             let recordingURL = recorder.url
-            
-            // Останавливаем запись аудио
             isAudioRecordingActive = false
             audioRecordingButton.setImage(UIImage(named: "audio_start"), for: .normal)
             stopAudioRecording()
             showRecordingStatus(with: "Запись сохранена")
             enableAllCreationButtons()
             
-            // Читаем аудиоданные по сохраненному URL
+            // Загружаем аудиоданные из созданного файла и сохраняем в базу
             if let audioData = try? Data(contentsOf: recordingURL) {
-                repository.saveAudio(forProject: project, audioData: audioData, timestamp: Date())
+                let drawingName = getDrawingName(for: drawingId)
+                repository.saveAudio(forProject: project, audioData: audioData, timestamp: Date(), drawingName: drawingName)
             }
         }
     }
 
     private func startAudioRecording() {
-            let session = AVAudioSession.sharedInstance()
-            do {
-                try session.setCategory(.playAndRecord, mode: .default)
-                try session.setActive(true)
-                
-                let tempDir = NSTemporaryDirectory()
-                let filePath = tempDir + "/recording-\(UUID().uuidString).m4a"
-                let url = URL(fileURLWithPath: filePath)
-                
-                let settings: [String: Any] = [
-                    AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                    AVSampleRateKey: 12000,
-                    AVNumberOfChannelsKey: 1,
-                    AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-                ]
-                
-                audioRecorder = try AVAudioRecorder(url: url, settings: settings)
-                audioRecorder?.delegate = self
-                audioRecorder?.record()
-            } catch {
-                print("Ошибка при запуске записи аудио: \(error)")
-            }
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playAndRecord, mode: .default)
+            try session.setActive(true)
+            
+            let tempDir = NSTemporaryDirectory()
+            let drawingName = getDrawingName(for: drawingId)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+            let dateString = formatter.string(from: Date())
+            // Формируем имя файла: дата_названиеЧертажа.caf
+            let fileName = "\(dateString)_\(drawingName).caf"
+            let filePath = tempDir + "/" + fileName
+            let url = URL(fileURLWithPath: filePath)
+            
+            let settings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 44100,
+                AVNumberOfChannelsKey: 1,
+                AVEncoderBitRateKey: 128000,
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            ]
+            
+            audioRecorder = try AVAudioRecorder(url: url, settings: settings)
+            audioRecorder?.delegate = self
+            audioRecorder?.record()
+        } catch {
+            print("Ошибка при запуске записи аудио: \(error)")
         }
+    }
 
     private func stopAudioRecording() {
         audioRecorder?.stop()

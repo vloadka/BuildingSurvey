@@ -12,6 +12,7 @@ public class AudioEntity: NSManagedObject {
     @NSManaged public var id: UUID?
     @NSManaged public var audioData: Data?
     @NSManaged public var timestamp: Date?
+    @NSManaged public var drawingName: String?
     // Если требуется привязка аудио к проекту, можно добавить связь:
     @NSManaged public var project: ProjectEntity?
 }

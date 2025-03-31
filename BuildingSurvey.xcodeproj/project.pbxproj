@@ -39,6 +39,9 @@
 		FF994FAF2CAAFA140027A6D3 /* ProjectListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994FAE2CAAFA140027A6D3 /* ProjectListViewModel.swift */; };
 		FF994FB12CAAFA380027A6D3 /* CreateProjectViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994FB02CAAFA380027A6D3 /* CreateProjectViewModel.swift */; };
 		FF994FB32CAAFA5F0027A6D3 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF994FB22CAAFA5F0027A6D3 /* Project.swift */; };
+		FF9954392D972F8800997224 /* AudioNoteRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF9954352D972F8800997224 /* AudioNoteRow.swift */; };
+		FF99543A2D972F8800997224 /* AudioNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF9954362D972F8800997224 /* AudioNotesView.swift */; };
+		FF99543B2D972F8800997224 /* AudioNotesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF9954372D972F8800997224 /* AudioNotesViewModel.swift */; };
 		FFCC17D62D58F62300BF061B /* DrawingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17D52D58F62300BF061B /* DrawingListView.swift */; };
 		FFCC17D82D58F63900BF061B /* DrawingListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17D72D58F63900BF061B /* DrawingListViewModel.swift */; };
 		FFCC17DA2D59108900BF061B /* AddDrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17D92D59108900BF061B /* AddDrawingView.swift */; };
@@ -111,6 +114,9 @@
 		FF994FAE2CAAFA140027A6D3 /* ProjectListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectListViewModel.swift; sourceTree = "<group>"; };
 		FF994FB02CAAFA380027A6D3 /* CreateProjectViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateProjectViewModel.swift; sourceTree = "<group>"; };
 		FF994FB22CAAFA5F0027A6D3 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
+		FF9954352D972F8800997224 /* AudioNoteRow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AudioNoteRow.swift; sourceTree = "<group>"; };
+		FF9954362D972F8800997224 /* AudioNotesView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AudioNotesView.swift; sourceTree = "<group>"; };
+		FF9954372D972F8800997224 /* AudioNotesViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AudioNotesViewModel.swift; sourceTree = "<group>"; };
 		FFCC17D52D58F62300BF061B /* DrawingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingListView.swift; sourceTree = "<group>"; };
 		FFCC17D72D58F63900BF061B /* DrawingListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingListViewModel.swift; sourceTree = "<group>"; };
 		FFCC17D92D59108900BF061B /* AddDrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddDrawingView.swift; sourceTree = "<group>"; };
@@ -225,6 +231,7 @@
 		FF994F7D2C9B55E10027A6D3 /* BuildingSurvey */ = {
 			isa = PBXGroup;
 			children = (
+				FF9954382D972F8800997224 /* AudioNotes */,
 				FF92EC5F2D8DEDB6007132FD /* CredentialsLogin */,
 				FF92EC652D8DF540007132FD /* Profile */,
 				FF8351382D4F9D51002E64D2 /* Info.plist */,
@@ -271,6 +278,16 @@
 				FF994F9B2C9B55E30027A6D3 /* BuildingSurveyUITestsLaunchTests.swift */,
 			);
 			path = BuildingSurveyUITests;
+			sourceTree = "<group>";
+		};
+		FF9954382D972F8800997224 /* AudioNotes */ = {
+			isa = PBXGroup;
+			children = (
+				FF9954352D972F8800997224 /* AudioNoteRow.swift */,
+				FF9954362D972F8800997224 /* AudioNotesView.swift */,
+				FF9954372D972F8800997224 /* AudioNotesViewModel.swift */,
+			);
+			path = AudioNotes;
 			sourceTree = "<group>";
 		};
 		FFCC17DF2D60CA7E00BF061B /* ProjectList */ = {
@@ -473,6 +490,7 @@
 				FFCC17EA2D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift in Sources */,
 				FF86A19C2D843E1600FB9FD6 /* TextEntity.swift in Sources */,
 				FF8351422D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift in Sources */,
+				FF99543B2D972F8800997224 /* AudioNotesViewModel.swift in Sources */,
 				FFFCDA6D2D78C08100681B3B /* LineEntity.swift in Sources */,
 				FF8351402D565908002E64D2 /* ProjectEntity.swift in Sources */,
 				FF92EC632D8DF10B007132FD /* CredentialsLoginViewModel.swift in Sources */,
@@ -483,6 +501,7 @@
 				FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */,
 				FFCC17DA2D59108900BF061B /* AddDrawingView.swift in Sources */,
 				FF86A19E2D849C7000FB9FD6 /* LayerEntity.swift in Sources */,
+				FF99543A2D972F8800997224 /* AudioNotesView.swift in Sources */,
 				FFCC17E82D60CF5500BF061B /* DrawingEntity.swift in Sources */,
 				FF92EC672D8DF54B007132FD /* ProfileView.swift in Sources */,
 				FF86A1A02D84ACFD00FB9FD6 /* AddLayerViewController.swift in Sources */,
@@ -495,6 +514,7 @@
 				FFCC17D62D58F62300BF061B /* DrawingListView.swift in Sources */,
 				FF994FB12CAAFA380027A6D3 /* CreateProjectViewModel.swift in Sources */,
 				FFCC17DC2D59127F00BF061B /* AddDrawingViewModel.swift in Sources */,
+				FF9954392D972F8800997224 /* AudioNoteRow.swift in Sources */,
 				FFFCDA5D2D68B79500681B3B /* DrawingViewModel.swift in Sources */,
 				FFCC17E62D60CD6F00BF061B /* Drawing.swift in Sources */,
 				FFFCDA6B2D78C03400681B3B /* LineEntity+CoreDataProperties.swift in Sources */,

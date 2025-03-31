@@ -7,6 +7,11 @@
 
 import SwiftUI
 
+enum FileTab: String, CaseIterable {
+    case drawings = "Чертежи"
+    case audio = "Аудиозаметки"
+}
+
 struct DrawingListView: View {
     let project: Project
     @StateObject private var viewModel: DrawingListViewModel
@@ -14,6 +19,7 @@ struct DrawingListView: View {
     @State private var showAlert = false
     @State private var drawingToDelete: Drawing? = nil
     @State private var selectedDrawing: Drawing? = nil
+    @State private var selectedTab: FileTab = .drawings
 
     init(project: Project, repository: GeneralRepository) {
         self.project = project
@@ -22,50 +28,62 @@ struct DrawingListView: View {
 
     var body: some View {
         VStack {
-            Text("Чертежи для проекта: \(project.name)")
+            Text("Файлы для проекта: \(project.name)")
                 .font(.title)
                 .padding()
 
-            if viewModel.drawings.isEmpty {
-                Text("Нет доступных чертежей")
-                    .foregroundColor(.gray)
-                    .padding()
-            } else {
-                List {
-                    ForEach(viewModel.drawings, id: \.self) { drawing in
-                        HStack {
-                            Image(systemName: "doc.text")
-                            Text(drawing.name)
-                            Spacer()
-                            Button(action: {
-                                drawingToDelete = drawing
-                                showAlert = true
-                            }) {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
+            Picker("", selection: $selectedTab) {
+                ForEach(FileTab.allCases, id: \.self) { tab in
+                    Text(tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding()
+
+            if selectedTab == .drawings {
+                // Список чертежей (код из существующего DrawingListView)
+                if viewModel.drawings.isEmpty {
+                    Text("Нет доступных чертежей")
+                        .foregroundColor(.gray)
+                        .padding()
+                } else {
+                    List {
+                        ForEach(viewModel.drawings, id: \.self) { drawing in
+                            HStack {
+                                Image(systemName: "doc.text")
+                                Text(drawing.name)
+                                Spacer()
+                                Button(action: {
+                                    drawingToDelete = drawing
+                                    showAlert = true
+                                }) {
+                                    Image(systemName: "trash")
+                                        .foregroundColor(.red)
+                                }
+                                .buttonStyle(BorderlessButtonStyle())
                             }
-                            .buttonStyle(BorderlessButtonStyle())
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedDrawing = drawing
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedDrawing = drawing
+                            }
                         }
                     }
                 }
-            }
-
-            Button("Добавить чертеж") {
-                isAddingDrawing = true
-            }
-            .buttonStyle(.borderedProminent)
-            .padding()
-            .tint(.red)
-            .sheet(isPresented: $isAddingDrawing) {
-                AddDrawingView(project: project, repository: viewModel.repository) {
-                    viewModel.loadDrawings() // Обновляем список после добавления
+                Button("Добавить чертёж") {
+                    isAddingDrawing = true
                 }
+                .buttonStyle(.borderedProminent)
+                .padding()
+                .tint(.red)
+                .sheet(isPresented: $isAddingDrawing) {
+                    AddDrawingView(project: project, repository: viewModel.repository) {
+                        viewModel.loadDrawings() // Обновляем список после добавления
+                    }
+                }
+            } else {
+                // Вкладка аудиозаметок
+                AudioNotesView(project: project, repository: viewModel.repository)
             }
-
             Spacer()
         }
         .onAppear {
@@ -73,7 +91,7 @@ struct DrawingListView: View {
         }
         .alert(isPresented: $showAlert) {
             Alert(
-                title: Text("Вы точно хотите удалить чертеж?"),
+                title: Text("Вы точно хотите удалить чертёж?"),
                 message: Text("Это действие невозможно отменить."),
                 primaryButton: .destructive(Text("Удалить")) {
                     if let drawingToDelete = drawingToDelete {
@@ -90,8 +108,8 @@ struct DrawingListView: View {
                 destination: PDFViewer(
                     pdfURL: URL(fileURLWithPath: selectedDrawing?.filePath ?? ""),
                     drawingId: selectedDrawing?.id ?? UUID(),
-                    repository: GeneralRepository(),
-                    project: project    // Используем экземпляр проекта, а не тип
+                    repository: viewModel.repository,
+                    project: project
                 )
                 .navigationTitle(selectedDrawing?.name ?? ""),
                 isActive: Binding(
