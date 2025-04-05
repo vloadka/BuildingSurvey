@@ -51,6 +51,9 @@
 		FFCC17E82D60CF5500BF061B /* DrawingEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17E72D60CF5500BF061B /* DrawingEntity.swift */; };
 		FFCC17EA2D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17E92D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift */; };
 		FFCC17F02D660DA700BF061B /* PDFViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCC17EF2D660DA700BF061B /* PDFViewer.swift */; };
+		FFCFFCCE2D9F29E800584702 /* PhotoPagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCCD2D9F29E800584702 /* PhotoPagerViewModel.swift */; };
+		FFCFFCD02D9F29FB00584702 /* PhotoPagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCCF2D9F29FB00584702 /* PhotoPagerView.swift */; };
+		FFCFFCD22D9F2A0D00584702 /* PhotoPagerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCD12D9F2A0D00584702 /* PhotoPagerViewController.swift */; };
 		FFFCDA5D2D68B79500681B3B /* DrawingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA5C2D68B79500681B3B /* DrawingViewModel.swift */; };
 		FFFCDA6B2D78C03400681B3B /* LineEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */; };
 		FFFCDA6D2D78C08100681B3B /* LineEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA6C2D78C08100681B3B /* LineEntity.swift */; };
@@ -126,6 +129,9 @@
 		FFCC17E72D60CF5500BF061B /* DrawingEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingEntity.swift; sourceTree = "<group>"; };
 		FFCC17E92D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DrawingEntity+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		FFCC17EF2D660DA700BF061B /* PDFViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFViewer.swift; sourceTree = "<group>"; };
+		FFCFFCCD2D9F29E800584702 /* PhotoPagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPagerViewModel.swift; sourceTree = "<group>"; };
+		FFCFFCCF2D9F29FB00584702 /* PhotoPagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPagerView.swift; sourceTree = "<group>"; };
+		FFCFFCD12D9F2A0D00584702 /* PhotoPagerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPagerViewController.swift; sourceTree = "<group>"; };
 		FFFCDA5C2D68B79500681B3B /* DrawingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingViewModel.swift; sourceTree = "<group>"; };
 		FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LineEntity+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		FFFCDA6C2D78C08100681B3B /* LineEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineEntity.swift; sourceTree = "<group>"; };
@@ -231,6 +237,7 @@
 		FF994F7D2C9B55E10027A6D3 /* BuildingSurvey */ = {
 			isa = PBXGroup;
 			children = (
+				FFCFFCCC2D9F29D700584702 /* PhotoPager */,
 				FF9954382D972F8800997224 /* AudioNotes */,
 				FF92EC5F2D8DEDB6007132FD /* CredentialsLogin */,
 				FF92EC652D8DF540007132FD /* Profile */,
@@ -343,6 +350,16 @@
 				FF83512C2D4F77FB002E64D2 /* PhotoLoader.swift */,
 			);
 			path = LoadFiles;
+			sourceTree = "<group>";
+		};
+		FFCFFCCC2D9F29D700584702 /* PhotoPager */ = {
+			isa = PBXGroup;
+			children = (
+				FFCFFCCD2D9F29E800584702 /* PhotoPagerViewModel.swift */,
+				FFCFFCCF2D9F29FB00584702 /* PhotoPagerView.swift */,
+				FFCFFCD12D9F2A0D00584702 /* PhotoPagerViewController.swift */,
+			);
+			path = PhotoPager;
 			sourceTree = "<group>";
 		};
 		FFFCDA5B2D68B75000681B3B /* Drawing */ = {
@@ -491,6 +508,7 @@
 				FF86A19C2D843E1600FB9FD6 /* TextEntity.swift in Sources */,
 				FF8351422D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift in Sources */,
 				FF99543B2D972F8800997224 /* AudioNotesViewModel.swift in Sources */,
+				FFCFFCD22D9F2A0D00584702 /* PhotoPagerViewController.swift in Sources */,
 				FFFCDA6D2D78C08100681B3B /* LineEntity.swift in Sources */,
 				FF8351402D565908002E64D2 /* ProjectEntity.swift in Sources */,
 				FF92EC632D8DF10B007132FD /* CredentialsLoginViewModel.swift in Sources */,
@@ -515,12 +533,14 @@
 				FF994FB12CAAFA380027A6D3 /* CreateProjectViewModel.swift in Sources */,
 				FFCC17DC2D59127F00BF061B /* AddDrawingViewModel.swift in Sources */,
 				FF9954392D972F8800997224 /* AudioNoteRow.swift in Sources */,
+				FFCFFCCE2D9F29E800584702 /* PhotoPagerViewModel.swift in Sources */,
 				FFFCDA5D2D68B79500681B3B /* DrawingViewModel.swift in Sources */,
 				FFCC17E62D60CD6F00BF061B /* Drawing.swift in Sources */,
 				FFFCDA6B2D78C03400681B3B /* LineEntity+CoreDataProperties.swift in Sources */,
 				FFFCDA772D7B3D6800681B3B /* PhotoEntity.swift in Sources */,
 				FF83512D2D4F77FB002E64D2 /* PhotoLoader.swift in Sources */,
 				FFCC17D82D58F63900BF061B /* DrawingListViewModel.swift in Sources */,
+				FFCFFCD02D9F29FB00584702 /* PhotoPagerView.swift in Sources */,
 				FF2BE6F42D8A179300ED8FB4 /* RectangleEntity.swift in Sources */,
 				FFFCDA732D78CFCD00681B3B /* Line.swift in Sources */,
 				FF83513E2D5655BE002E64D2 /* CoreDataManager.swift in Sources */,

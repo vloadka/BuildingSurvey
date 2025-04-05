@@ -200,12 +200,14 @@ class GeneralRepository: ObservableObject {
         do {
             if let drawing = try context.fetch(fetchRequest).first {
                 let photoEntity = PhotoEntity(context: context)
-                photoEntity.id = id  // Используем переданный идентификатор
+                photoEntity.id = id  // основной идентификатор фото-маркера
                 photoEntity.imageData = image.jpegData(compressionQuality: 0.8)
                 photoEntity.photoNumber = Int64(photoNumber)
                 photoEntity.timestamp = timestamp
                 photoEntity.coordinateX = coordinateX
                 photoEntity.coordinateY = coordinateY
+                // Для основного фото-маркера поле parentId оставляем nil
+                photoEntity.parentId = nil
                 photoEntity.drawing = drawing
                 saveContext()
             } else {
@@ -218,7 +220,8 @@ class GeneralRepository: ObservableObject {
 
     func loadPhotoMarkers(forDrawing drawingId: UUID) -> [PhotoMarkerData] {
         let fetchRequest: NSFetchRequest<PhotoEntity> = PhotoEntity.fetchRequest()
-        fetchRequest.predicate = NSPredicate(format: "drawing.id == %@", drawingId as CVarArg)
+        // Загружаем только основные фото-маркеры (parentId == nil)
+        fetchRequest.predicate = NSPredicate(format: "drawing.id == %@ AND parentId == nil", drawingId as CVarArg)
         do {
             let photoEntities = try context.fetch(fetchRequest)
             return photoEntities.compactMap { photo in
@@ -234,19 +237,116 @@ class GeneralRepository: ObservableObject {
         }
     }
     
-    func deletePhotoMarker(withId id: UUID) {
+    // Возвращает новый id продвинутой фотографии, если удаляется основной фото-маркер
+    func deletePhotoMarker(withId id: UUID) -> UUID? {
         let fetchRequest: NSFetchRequest<PhotoEntity> = PhotoEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         do {
             if let photoEntity = try context.fetch(fetchRequest).first {
+                var promotedPhotoId: UUID? = nil
+                // Если удаляемое фото является основным (parentId == nil)
+                if photoEntity.parentId == nil {
+                    // Находим дополнительные фото, связанные с этим фото-маркером
+                    let additionalRequest: NSFetchRequest<PhotoEntity> = PhotoEntity.fetchRequest()
+                    additionalRequest.predicate = NSPredicate(format: "parentId == %@", id as CVarArg)
+                    additionalRequest.sortDescriptors = [NSSortDescriptor(key: "photoNumber", ascending: true)]
+                    let additionalPhotos = try context.fetch(additionalRequest)
+                    if let firstAdditional = additionalPhotos.first {
+                        // Продвигаем первую дополнительную фотографию в основное фото-маркер
+                        firstAdditional.parentId = nil
+                        promotedPhotoId = firstAdditional.id
+                        // Перепривязываем оставшиеся дополнительные фото к продвинутой фотографии
+                        for photo in additionalPhotos.dropFirst() {
+                            photo.parentId = promotedPhotoId
+                        }
+                    }
+                }
                 context.delete(photoEntity)
                 saveContext()
+                return promotedPhotoId
             }
         } catch {
             print("Ошибка удаления фото-маркера: \(error)")
         }
+        return nil
     }
     
+    func updatePhotoMarker(forDrawing drawingId: UUID,
+                           withId id: UUID,
+                           image: UIImage,
+                           timestamp: Date,
+                           coordinateX: Double,
+                           coordinateY: Double) {
+        let fetchRequest: NSFetchRequest<PhotoEntity> = PhotoEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        
+        do {
+            if let photoEntity = try context.fetch(fetchRequest).first {
+                photoEntity.imageData = image.jpegData(compressionQuality: 0.8)
+                photoEntity.timestamp = timestamp
+                photoEntity.coordinateX = coordinateX
+                photoEntity.coordinateY = coordinateY
+                saveContext()
+            } else {
+                print("Фото-маркер с id \(id) не найден.")
+            }
+        } catch {
+            print("Ошибка обновления фото-маркера: \(error)")
+        }
+    }
+    
+    func saveAdditionalPhoto(forDrawing drawingId: UUID,
+                             parentMarkerId: UUID,
+                             newPhotoId: UUID,
+                             image: UIImage,
+                             photoNumber: Int,
+                             timestamp: Date,
+                             coordinateX: Double,
+                             coordinateY: Double) {
+        let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+        
+        do {
+            if let drawing = try context.fetch(fetchRequest).first {
+                let additionalPhoto = PhotoEntity(context: context)
+                additionalPhoto.id = newPhotoId
+                additionalPhoto.imageData = image.jpegData(compressionQuality: 0.8)
+                additionalPhoto.photoNumber = Int64(photoNumber)
+                additionalPhoto.timestamp = timestamp
+                additionalPhoto.coordinateX = coordinateX
+                additionalPhoto.coordinateY = coordinateY
+                // Здесь устанавливаем связь с основным фото-маркером:
+                additionalPhoto.parentId = parentMarkerId
+                additionalPhoto.drawing = drawing
+                saveContext()
+            } else {
+                print("Ошибка: Чертеж с id \(drawingId) не найден.")
+            }
+        } catch {
+            print("Ошибка сохранения дополнительного фото: \(error)")
+        }
+    }
+    
+    func loadPhotosForMarker(withId markerId: UUID) -> [PhotoMarkerData] {
+        let fetchRequest: NSFetchRequest<PhotoEntity> = PhotoEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@ OR parentId == %@", markerId as CVarArg, markerId as CVarArg)
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "photoNumber", ascending: true)]
+        
+        do {
+            let photoEntities = try context.fetch(fetchRequest)
+            return photoEntities.compactMap { photo in
+                guard let id = photo.id,
+                      let data = photo.imageData,
+                      let image = UIImage(data: data) else { return nil }
+                let coordinate = CGPoint(x: photo.coordinateX, y: photo.coordinateY)
+                return PhotoMarkerData(id: id, image: image, coordinate: coordinate)
+            }
+        } catch {
+            print("Ошибка загрузки фото для маркера: \(error)")
+            return []
+        }
+    }
+
     func savePoint(forDrawing drawingId: UUID, coordinate: CGPoint, layer: LayerData? = nil) -> UUID? {
         let fetchRequest: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
@@ -655,6 +755,15 @@ class GeneralRepository: ObservableObject {
             }
         } catch {
             print("Ошибка удаления аудио: \(error)")
+        }
+    }
+    
+    func checkAdditionalPhoto(forMarkerId markerId: UUID, using repository: GeneralRepository) {
+        let photos = repository.loadPhotosForMarker(withId: markerId)
+        if photos.count > 1 {
+            print("Фото-маркер с id \(markerId) содержит дополнительное фото. Всего фото: \(photos.count)")
+        } else {
+            print("Фото-маркер с id \(markerId) не имеет дополнительного фото.")
         }
     }
 

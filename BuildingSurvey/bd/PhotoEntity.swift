@@ -15,6 +15,7 @@ public class PhotoEntity: NSManagedObject {
     @NSManaged public var timestamp: Date?
     @NSManaged public var coordinateX: Double
     @NSManaged public var coordinateY: Double
+    @NSManaged public var parentId: UUID?
     @NSManaged public var drawing: DrawingEntity?
 }
 

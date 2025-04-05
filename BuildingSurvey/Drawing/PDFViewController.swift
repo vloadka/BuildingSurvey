@@ -12,9 +12,25 @@ import CoreData
 
 // Класс для маркера с фотографией
 class PhotoMarkerButton: UIButton {
-    var photo: UIImage?
+    var photo: UIImage? {
+        didSet {
+            self.setImage(photo, for: .normal)
+            self.imageView?.contentMode = .scaleAspectFill
+        }
+    }
     var photoEntityId: UUID?
     var normalizedCoordinate: CGPoint?  // Свойство для фиксированных координат
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        self.clipsToBounds = true
+        self.layer.cornerRadius = frame.size.width / 2
+        self.imageView?.contentMode = .scaleAspectFill
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 }
 
 struct PhotoMarkerData {
@@ -140,6 +156,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     var isAudioRecordingActive = false
     var audioRecorder: AVAudioRecorder?
     var recordingStatusLabel: UILabel?
+    var currentRetakePhotoId: UUID?
+
     
     // Ключ для сохранения зума
     private var zoomScaleKey: String {
@@ -735,6 +753,11 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         let normalizedY = locationInView.y / pdfContentView.bounds.height
         markerButton.normalizedCoordinate = CGPoint(x: normalizedX, y: normalizedY)
         
+        // если идентификатор ещё не задан, генерируем его
+            if markerButton.photoEntityId == nil {
+                 markerButton.photoEntityId = UUID()
+            }
+        
         currentPhotoMarker = markerButton
         photoMarkerTapRecognizer.isEnabled = false
         presentCamera()
@@ -952,30 +975,78 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     // MARK: - UIImagePickerControllerDelegate
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        picker.dismiss(animated: true)
-        guard let image = info[.originalImage] as? UIImage,
-              let marker = currentPhotoMarker,
-              let normalized = marker.normalizedCoordinate else { return }
-        
-        let markerId = UUID()
-        marker.photoEntityId = markerId
-        let photoNumber = repository.getNextPhotoNumber(forDrawing: drawingId)
-        
-        repository.savePhotoMarker(forDrawing: drawingId,
-                                   withId: markerId,
-                                   image: image,
-                                   photoNumber: photoNumber,
-                                   timestamp: Date(),
-                                   coordinateX: Double(normalized.x),
-                                   coordinateY: Double(normalized.y))
-        
-        marker.photo = image
-        marker.setBackgroundImage(image, for: .normal)
-        
-        currentPhotoMarker = nil
-        photoMarkerTapRecognizer.isEnabled = topButtonActive
+    func imagePickerController(_ picker: UIImagePickerController,
+                               didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        picker.dismiss(animated: true) { [weak self] in
+            guard let self = self,
+                  let image = info[.originalImage] as? UIImage else { return }
+            
+            if let marker = self.currentPhotoMarker,
+               let normalized = marker.normalizedCoordinate,
+               let markerId = marker.photoEntityId {
+                
+                let photoNumber = self.repository.getNextPhotoNumber(forDrawing: self.drawingId)
+                
+                switch self.currentPhotoOperation {
+                case .none:
+                    // Новый маркер – сохраняем фото как основное
+                    self.repository.savePhotoMarker(forDrawing: self.drawingId,
+                                                    withId: markerId,
+                                                    image: image,
+                                                    photoNumber: photoNumber,
+                                                    timestamp: Date(),
+                                                    coordinateX: Double(normalized.x),
+                                                    coordinateY: Double(normalized.y))
+                    marker.photo = image
+                    
+                case .retake:
+                    if let retakePhotoId = self.currentRetakePhotoId {
+                        self.repository.updatePhotoMarker(forDrawing: self.drawingId,
+                                                          withId: retakePhotoId,
+                                                          image: image,
+                                                          timestamp: Date(),
+                                                          coordinateX: Double(normalized.x),
+                                                          coordinateY: Double(normalized.y))
+                        // Если переснимается основное фото, обновляем метку
+                        if retakePhotoId == markerId {
+                            marker.photo = image
+                        } else {
+                            // Для дополнительного фото обновляем обложку, устанавливая первую фотографию
+                            let photos = self.repository.loadPhotosForMarker(withId: markerId)
+                            if let firstPhoto = photos.first {
+                                marker.photo = firstPhoto.image
+                            }
+                        }
+                        self.currentRetakePhotoId = nil
+                    }
+                    
+                case .add:
+                    // Добавляем дополнительное фото, не затирая основное
+                    let newPhotoId = UUID()
+                    self.repository.saveAdditionalPhoto(forDrawing: self.drawingId,
+                                                        parentMarkerId: markerId,
+                                                        newPhotoId: newPhotoId,
+                                                        image: image,
+                                                        photoNumber: photoNumber,
+                                                        timestamp: Date(),
+                                                        coordinateX: Double(normalized.x),
+                                                        coordinateY: Double(normalized.y))
+                    CoreDataManager.shared.context.refreshAllObjects()
+                    let photos = self.repository.loadPhotosForMarker(withId: markerId)
+                    print("Количество фотографий для маркера \(markerId): \(photos.count)")
+                    if let firstPhoto = photos.first {
+                        marker.photo = firstPhoto.image
+                    }
+                }
+            }
+            
+            self.currentPhotoOperation = .none
+            self.currentPhotoMarker = nil
+            self.photoMarkerTapRecognizer.isEnabled = self.topButtonActive
+        }
     }
+
+
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         picker.dismiss(animated: true)
@@ -986,54 +1057,53 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     
     // MARK: - Работа с фото-маркерами
     @objc private func photoMarkerTapped(_ sender: PhotoMarkerButton) {
-        guard let photo = sender.photo else { return }
-        presentPhoto(photo, forMarker: sender)
+        presentPhoto(forMarker: sender)
     }
     
-    private func presentPhoto(_ image: UIImage, forMarker marker: PhotoMarkerButton) {
-        let photoVC = UIViewController()
-        photoVC.view.backgroundColor = .black
-        
-        let imageView = UIImageView(image: image)
-        imageView.contentMode = .scaleAspectFit
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        photoVC.view.addSubview(imageView)
-        NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: photoVC.view.topAnchor),
-            imageView.bottomAnchor.constraint(equalTo: photoVC.view.bottomAnchor),
-            imageView.leadingAnchor.constraint(equalTo: photoVC.view.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor)
-        ])
-        
-        // Кнопка закрытия
-        let closeButton = UIButton(type: .system)
-        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
-        closeButton.tintColor = .white
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        closeButton.addTarget(self, action: #selector(dismissPhotoVC), for: .touchUpInside)
-        photoVC.view.addSubview(closeButton)
-        NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: photoVC.view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            closeButton.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor, constant: -16)
-        ])
-        
-        // Добавляем кнопку удаления фото-маркера
-        let deleteButton = UIButton(type: .system)
-        deleteButton.setImage(UIImage(systemName: "trash"), for: .normal)
-        deleteButton.tintColor = .red
-        deleteButton.translatesAutoresizingMaskIntoConstraints = false
-        deleteButton.addTarget(self, action: #selector(deletePhotoMarkerAction(_:)), for: .touchUpInside)
-        photoVC.view.addSubview(deleteButton)
-        NSLayoutConstraint.activate([
-            deleteButton.bottomAnchor.constraint(equalTo: photoVC.view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            deleteButton.centerXAnchor.constraint(equalTo: photoVC.view.centerXAnchor),
-            deleteButton.widthAnchor.constraint(equalToConstant: 30),
-            deleteButton.heightAnchor.constraint(equalToConstant: 30)
-        ])
-        
-        self.currentViewingMarker = marker
-        present(photoVC, animated: true)
-    }
+//    private func presentPhoto(_ image: UIImage, forMarker marker: PhotoMarkerButton) {
+//        let photoVC = UIViewController()
+//        photoVC.view.backgroundColor = .black
+//        
+//        let imageView = UIImageView(image: image)
+//        imageView.contentMode = .scaleAspectFit
+//        imageView.translatesAutoresizingMaskIntoConstraints = false
+//        photoVC.view.addSubview(imageView)
+//        NSLayoutConstraint.activate([
+//            imageView.topAnchor.constraint(equalTo: photoVC.view.topAnchor),
+//            imageView.bottomAnchor.constraint(equalTo: photoVC.view.bottomAnchor),
+//            imageView.leadingAnchor.constraint(equalTo: photoVC.view.leadingAnchor),
+//            imageView.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor)
+//        ])
+//        
+//        // Кнопка закрытия
+//        let closeButton = UIButton(type: .system)
+//        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
+//        closeButton.tintColor = .white
+//        closeButton.translatesAutoresizingMaskIntoConstraints = false
+//        closeButton.addTarget(self, action: #selector(dismissPhotoVC), for: .touchUpInside)
+//        photoVC.view.addSubview(closeButton)
+//        NSLayoutConstraint.activate([
+//            closeButton.topAnchor.constraint(equalTo: photoVC.view.safeAreaLayoutGuide.topAnchor, constant: 16),
+//            closeButton.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor, constant: -16)
+//        ])
+//        
+//        // Добавляем кнопку удаления фото-маркера
+//        let deleteButton = UIButton(type: .system)
+//        deleteButton.setImage(UIImage(systemName: "trash"), for: .normal)
+//        deleteButton.tintColor = .red
+//        deleteButton.translatesAutoresizingMaskIntoConstraints = false
+//        deleteButton.addTarget(self, action: #selector(deletePhotoMarkerAction(_:)), for: .touchUpInside)
+//        photoVC.view.addSubview(deleteButton)
+//        NSLayoutConstraint.activate([
+//            deleteButton.bottomAnchor.constraint(equalTo: photoVC.view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+//            deleteButton.centerXAnchor.constraint(equalTo: photoVC.view.centerXAnchor),
+//            deleteButton.widthAnchor.constraint(equalToConstant: 30),
+//            deleteButton.heightAnchor.constraint(equalToConstant: 30)
+//        ])
+//        
+//        self.currentViewingMarker = marker
+//        present(photoVC, animated: true)
+//    }
 
     
     @objc private func dismissPhotoVC() {
@@ -1744,7 +1814,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func showRecordingStatus(with message: String) {
-        // Отобразите временное уведомление (например, лейбл в центре экрана)
+        // Удаляем предыдущий лейбл, если он существует
         recordingStatusLabel?.removeFromSuperview()
         recordingStatusLabel = UILabel()
         recordingStatusLabel?.translatesAutoresizingMaskIntoConstraints = false
@@ -1752,26 +1822,29 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         recordingStatusLabel?.backgroundColor = UIColor.black.withAlphaComponent(0.6)
         recordingStatusLabel?.textColor = .white
         recordingStatusLabel?.textAlignment = .center
-        if let statusLabel = recordingStatusLabel {
-            view.addSubview(statusLabel)
-            NSLayoutConstraint.activate([
-                statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                statusLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-                statusLabel.widthAnchor.constraint(equalToConstant: 200),
-                statusLabel.heightAnchor.constraint(equalToConstant: 40)
-            ])
-            // Убираем уведомление через 2 секунды
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                statusLabel.removeFromSuperview()
-            }
+        
+        // Если есть представленный контроллер, добавляем уведомление в его view, иначе в self.view
+        guard let containerView = self.presentedViewController?.view ?? self.view else { return }
+        
+        containerView.addSubview(recordingStatusLabel!)
+        NSLayoutConstraint.activate([
+            recordingStatusLabel!.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            recordingStatusLabel!.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            recordingStatusLabel!.widthAnchor.constraint(equalToConstant: 200),
+            recordingStatusLabel!.heightAnchor.constraint(equalToConstant: 40)
+        ])
+        
+        // Убираем уведомление через 2 секунды
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            self.recordingStatusLabel?.removeFromSuperview()
         }
     }
-    
-    // вывод бд аудио в консоль
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        printAudioRecords()
-    }
+
+//    // вывод бд аудио в консоль
+//    override func viewDidAppear(_ animated: Bool) {
+//        super.viewDidAppear(animated)
+//        printAudioRecords()
+//    }
     
     private func printAudioRecords() {
         let fetchRequest: NSFetchRequest<AudioEntity> = AudioEntity.fetchRequest()
@@ -1787,4 +1860,332 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             print("Ошибка выборки аудио: \(error)")
         }
     }
+    
+    // Новый метод в PDFViewController для показа фото-маркера с несколькими фото через свайп.
+    private func presentPhoto(forMarker marker: PhotoMarkerButton) {
+        guard let markerId = marker.photoEntityId else {
+            print("Маркер не имеет photoEntityId")
+            return
+        }
+        // Сохраняем выбранный маркер для последующих операций (retake, add, delete)
+        self.currentViewingMarker = marker
+        
+        // Загружаем все фото (основное и дополнительные) для данного маркера
+        let photos = repository.loadPhotosForMarker(withId: markerId)
+        if photos.isEmpty {
+            print("Нет фото для маркера \(markerId)")
+            return
+        }
+        
+        let pagerViewModel = PhotoPagerViewModel(photos: photos)
+        let pagerVC = PhotoPagerViewController(viewModel: pagerViewModel)
+        
+        // Обработка нажатия на кнопку удаления (корзина)
+        pagerVC.onDelete = { [weak self, weak pagerVC] in
+            guard let self = self,
+                  let pagerVC = pagerVC,
+                  let marker = self.currentViewingMarker,
+                  let currentMarkerId = marker.photoEntityId else { return }
+            
+            let currentPage = pagerVC.currentPage
+            let photoId = pagerVC.photos[currentPage].id
+            
+            if currentPage == 0 {
+                // Удаляем основное фото (фото на обложке)
+                // Функция deletePhotoMarker возвращает новый id продвинутой фотографии (если есть)
+                if let promotedId = self.repository.deletePhotoMarker(withId: currentMarkerId) {
+                    // Обновляем id метки на новый основной
+                    marker.photoEntityId = promotedId
+                    let updatedPhotos = self.repository.loadPhotosForMarker(withId: promotedId)
+                    if let firstPhoto = updatedPhotos.first {
+                        marker.photo = firstPhoto.image
+                    }
+                    pagerVC.updatePhotos(updatedPhotos)
+                } else {
+                    // Если дополнительных фото нет, удаляем метку полностью
+                    _ = self.repository.deletePhotoMarker(withId: currentMarkerId)
+                    marker.removeFromSuperview()
+                    self.dismiss(animated: true)
+                }
+            } else {
+                // Удаляем дополнительное фото
+                self.repository.deletePhotoMarker(withId: photoId)
+                let updatedPhotos = self.repository.loadPhotosForMarker(withId: currentMarkerId)
+                if let firstPhoto = updatedPhotos.first {
+                    marker.photo = firstPhoto.image
+                }
+                pagerVC.updatePhotos(updatedPhotos)
+                // Экран просмотра остается открытым
+            }
+        }
+        
+        // Обработка пересъёмки (retake)
+        pagerVC.onRetake = { [weak self, weak pagerVC] in
+            guard let self = self, let pagerVC = pagerVC else { return }
+            let currentPage = pagerVC.currentPage
+            self.currentRetakePhotoId = pagerVC.photos[currentPage].id
+            self.currentPhotoMarker = self.currentViewingMarker
+            self.dismiss(animated: true) {
+                self.currentPhotoOperation = .retake
+                self.presentCamera()
+            }
+        }
+        
+        // Обработка добавления нового фото (add)
+        pagerVC.onAdd = { [weak self] in
+            guard let self = self else { return }
+            self.currentPhotoMarker = self.currentViewingMarker
+            self.dismiss(animated: true) {
+                self.currentPhotoOperation = .add
+                self.presentCamera()
+            }
+        }
+        
+        // Обработка аудиозаметки (без изменений)
+        pagerVC.onAudio = { [weak self] in
+            guard let self = self else { return }
+            if !self.isAudioRecordingActive {
+                self.isAudioRecordingActive = true
+                self.showRecordingStatus(with: "Идет запись…")
+                self.startAudioRecording()
+            } else {
+                guard let recorder = self.audioRecorder else { return }
+                let recordingURL = recorder.url
+                self.isAudioRecordingActive = false
+                self.stopAudioRecording()
+                self.showRecordingStatus(with: "Запись сохранена")
+                if let audioData = try? Data(contentsOf: recordingURL) {
+                    let drawingName = self.getDrawingName(for: self.drawingId)
+                    self.repository.saveAudio(forProject: self.project, audioData: audioData, timestamp: Date(), drawingName: drawingName)
+                }
+            }
+        }
+        
+        // Обработка завершения просмотра
+        pagerVC.onDone = { [weak self] in
+            self?.dismiss(animated: true)
+        }
+        
+        self.present(pagerVC, animated: true, completion: nil)
+    }
+
+    // Метод для переключения режима аудиозаметки
+    @objc private func toggleAudioNote(_ sender: UIButton) {
+        if !isAudioRecordingActive {
+            // Если запись не активна, запускаем запись и меняем изображение на активное
+            isAudioRecordingActive = true
+            sender.setImage(UIImage(named: "audio_stop"), for: .normal)
+            showRecordingStatus(with: "Идет запись…")
+            // При необходимости можно отключить остальные кнопки
+            startAudioRecording()
+        } else {
+            // Если запись активна, останавливаем запись и возвращаем исходное изображение
+            guard let recorder = audioRecorder else { return }
+            let recordingURL = recorder.url
+            isAudioRecordingActive = false
+            sender.setImage(UIImage(named: "audio_start"), for: .normal)
+            stopAudioRecording()
+            showRecordingStatus(with: "Запись сохранена")
+            // Сохраняем аудиозапись в базу
+            if let audioData = try? Data(contentsOf: recordingURL) {
+                let drawingName = getDrawingName(for: drawingId)
+                repository.saveAudio(forProject: project, audioData: audioData, timestamp: Date(), drawingName: drawingName)
+            }
+        }
+    }
+
+        
+//        private func presentPhoto(forMarker marker: PhotoMarkerButton) {
+//        // Проверяем, что у маркера установлен идентификатор
+//        guard let markerId = marker.photoEntityId else {
+//            print("photoEntityId отсутствует")
+//            return
+//        }
+//        
+//        // Загружаем все фото, связанные с этим маркером
+//        let photos = repository.loadPhotosForMarker(withId: markerId)
+//        print("Загружено \(photos.count) фотографий для маркера \(markerId)")
+//        
+//        // Если фотографии не найдены, выводим предупреждение
+//        guard !photos.isEmpty else {
+//            let alert = UIAlertController(title: "Ошибка", message: "Фотография не найдена.", preferredStyle: .alert)
+//            alert.addAction(UIAlertAction(title: "OK", style: .default))
+//            present(alert, animated: true)
+//            return
+//        }
+//        
+//        // Создаём контроллер для отображения фотографий
+//        let photoVC = UIViewController()
+//        photoVC.modalPresentationStyle = .fullScreen
+//        photoVC.view.backgroundColor = .white
+//        
+//        // Если фото только одно, показываем его без возможности пролистывания
+//        if photos.count == 1 {
+//            let imageView = UIImageView(image: photos[0].image)
+//            imageView.contentMode = .scaleAspectFit
+//            imageView.translatesAutoresizingMaskIntoConstraints = false
+//            photoVC.view.addSubview(imageView)
+//            NSLayoutConstraint.activate([
+//                imageView.topAnchor.constraint(equalTo: photoVC.view.topAnchor),
+//                imageView.leadingAnchor.constraint(equalTo: photoVC.view.leadingAnchor),
+//                imageView.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor),
+//                imageView.bottomAnchor.constraint(equalTo: photoVC.view.bottomAnchor, constant: -80)
+//            ])
+//        } else {
+//            // Если фото больше одного, используем UIScrollView с UIStackView для пролистывания
+//            let scrollView = UIScrollView()
+//            scrollView.isPagingEnabled = true
+//            scrollView.showsHorizontalScrollIndicator = false
+//            scrollView.translatesAutoresizingMaskIntoConstraints = false
+//            photoVC.view.addSubview(scrollView)
+//            
+//            NSLayoutConstraint.activate([
+//                scrollView.topAnchor.constraint(equalTo: photoVC.view.topAnchor),
+//                scrollView.leadingAnchor.constraint(equalTo: photoVC.view.leadingAnchor),
+//                scrollView.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor),
+//                scrollView.bottomAnchor.constraint(equalTo: photoVC.view.bottomAnchor, constant: -80) // отводим место для нижней панели
+//            ])
+//            
+//            let stackView = UIStackView()
+//            stackView.axis = .horizontal
+//            stackView.alignment = .fill
+//            stackView.distribution = .fillEqually
+//            stackView.translatesAutoresizingMaskIntoConstraints = false
+//            scrollView.addSubview(stackView)
+//            
+//            NSLayoutConstraint.activate([
+//                stackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+//                stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+//                stackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+//                stackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+//                stackView.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
+//            ])
+//            
+//            for photoData in photos {
+//                let imageView = UIImageView(image: photoData.image)
+//                imageView.contentMode = .scaleAspectFit
+//                imageView.translatesAutoresizingMaskIntoConstraints = false
+//                stackView.addArrangedSubview(imageView)
+//            }
+//        }
+//        
+//        // Создаём нижнюю панель с кнопками
+//        let bottomPanel = UIView()
+//        bottomPanel.translatesAutoresizingMaskIntoConstraints = false
+//        photoVC.view.addSubview(bottomPanel)
+//        
+//        NSLayoutConstraint.activate([
+//            bottomPanel.heightAnchor.constraint(equalToConstant: 80),
+//            bottomPanel.leadingAnchor.constraint(equalTo: photoVC.view.leadingAnchor),
+//            bottomPanel.trailingAnchor.constraint(equalTo: photoVC.view.trailingAnchor),
+//            bottomPanel.bottomAnchor.constraint(equalTo: photoVC.view.safeAreaLayoutGuide.bottomAnchor)
+//        ])
+//        
+//        // Кнопка "Удалить"
+//        let deleteButton = UIButton(type: .system)
+//        deleteButton.setImage(UIImage(systemName: "trash"), for: .normal)
+//        deleteButton.tintColor = .red
+//        deleteButton.translatesAutoresizingMaskIntoConstraints = false
+//        deleteButton.addTarget(self, action: #selector(deletePhotoMarkerAction(_:)), for: .touchUpInside)
+//        
+//        // Кнопка "Переснять"
+//        let retakeButton = UIButton(type: .custom)
+//        retakeButton.setImage(UIImage(named: "change"), for: .normal)
+//        retakeButton.translatesAutoresizingMaskIntoConstraints = false
+//        retakeButton.addTarget(self, action: #selector(retakePhotoForMarker), for: .touchUpInside)
+//        retakeButton.widthAnchor.constraint(equalToConstant: 30).isActive = true
+//        retakeButton.heightAnchor.constraint(equalToConstant: 30).isActive = true
+//        
+//        // Кнопка "Добавить"
+//        let addButton = UIButton(type: .custom)
+//        addButton.setImage(UIImage(named: "add"), for: .normal)
+//        addButton.translatesAutoresizingMaskIntoConstraints = false
+//        addButton.addTarget(self, action: #selector(addPhotoToMarker), for: .touchUpInside)
+//        addButton.widthAnchor.constraint(equalToConstant: 30).isActive = true
+//        addButton.heightAnchor.constraint(equalToConstant: 30).isActive = true
+//        
+//        // Новая кнопка "Аудиозаметка" с переключением изображения:
+//        let audioButton = UIButton(type: .custom)
+//        // Устанавливаем начальное изображение (неактивное состояние)
+//        audioButton.setImage(UIImage(named: "audio_start"), for: .normal)
+//        audioButton.translatesAutoresizingMaskIntoConstraints = false
+//        audioButton.addTarget(self, action: #selector(toggleAudioNote(_:)), for: .touchUpInside)
+//        audioButton.widthAnchor.constraint(equalToConstant: 30).isActive = true
+//        audioButton.heightAnchor.constraint(equalToConstant: 30).isActive = true
+//        
+//        // Кнопка "Готово"
+//        let doneButton = UIButton(type: .custom)
+//        doneButton.setImage(UIImage(named: "accept"), for: .normal)
+//        doneButton.translatesAutoresizingMaskIntoConstraints = false
+//        doneButton.addTarget(self, action: #selector(dismissPhotoVC), for: .touchUpInside)
+//        doneButton.widthAnchor.constraint(equalToConstant: 30).isActive = true
+//        doneButton.heightAnchor.constraint(equalToConstant: 30).isActive = true
+//        
+//        // Организуем кнопки в StackView
+//        let buttonStack = UIStackView(arrangedSubviews: [deleteButton, retakeButton, addButton, audioButton, doneButton])
+//        buttonStack.axis = .horizontal
+//        buttonStack.alignment = .center
+//        buttonStack.distribution = .equalSpacing
+//        buttonStack.translatesAutoresizingMaskIntoConstraints = false
+//        bottomPanel.addSubview(buttonStack)
+//        
+//        NSLayoutConstraint.activate([
+//            buttonStack.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
+//            buttonStack.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
+//            buttonStack.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor)
+//        ])
+//        
+//        self.currentViewingMarker = marker
+//        present(photoVC, animated: true)
+//    }
+//
+//    @objc private func toggleAudioNote(_ sender: UIButton) {
+//        if !isAudioRecordingActive {
+//            // Если запись не активна, запускаем запись и меняем изображение на активное
+//            isAudioRecordingActive = true
+//            sender.setImage(UIImage(named: "audio_stop"), for: .normal)
+//            showRecordingStatus(with: "Идет запись…")
+//            // Если нужно, отключите остальные кнопки (аналог disableAllCreationButtons)
+//            startAudioRecording()
+//        } else {
+//            // Если запись активна, останавливаем запись и возвращаем исходное изображение
+//            guard let recorder = audioRecorder else { return }
+//            let recordingURL = recorder.url
+//            isAudioRecordingActive = false
+//            sender.setImage(UIImage(named: "audio_start"), for: .normal)
+//            stopAudioRecording()
+//            showRecordingStatus(with: "Запись сохранена")
+//            // Если нужно, включите обратно остальные кнопки (аналог enableAllCreationButtons)
+//            if let audioData = try? Data(contentsOf: recordingURL) {
+//                let drawingName = getDrawingName(for: drawingId)
+//                repository.saveAudio(forProject: project, audioData: audioData, timestamp: Date(), drawingName: drawingName)
+//            }
+//        }
+//    }
+
+    enum PhotoOperation { 
+        case none
+        case retake
+        case add }
+    
+    // Метод для пересъёмки фото – закрывает текущий экран, затем открывает камеру в режиме пересъёмки.
+    @objc private func retakePhotoForMarker() {
+        dismiss(animated: true) { [weak self] in
+            guard let self = self else { return }
+            self.currentPhotoOperation = .retake
+            self.presentCamera()
+        }
+    }
+    
+    // Метод для добавления нового фото – закрывает текущий экран, затем открывает камеру в режиме добавления.
+    @objc private func addPhotoToMarker() {
+        dismiss(animated: true) { [weak self] in
+            guard let self = self else { return }
+            self.currentPhotoOperation = .add
+            self.presentCamera()
+        }
+    }
+    
+    private var currentPhotoOperation: PhotoOperation = .none
+
 }
