@@ -8,7 +8,7 @@
 import SwiftUI
 
 class CredentialsLoginViewModel: ObservableObject {
-    @Published var username: String = ""
+    @Published var email: String = ""
     @Published var password: String = ""
     @Published var accessCode: String = ""
     
@@ -21,48 +21,52 @@ class CredentialsLoginViewModel: ObservableObject {
     @Published var navigateToProjectList: Bool = false
     
     var repository: GeneralRepository
+    var sendRepository: SendRepository
     
-    init(repository: GeneralRepository) {
+    init(repository: GeneralRepository, sendRepository: SendRepository) {
         self.repository = repository
+        self.sendRepository = sendRepository
     }
     
-    // Метод для обработки нажатия кнопки входа
     func loginAction() {
-        let trimmedUsername = username.trimmingCharacters(in: .whitespaces)
+        let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
         
-        // Проверка имени: не пустое и начинается с заглавной буквы
-        if trimmedUsername.isEmpty {
-            showError("Имя не должно быть пустым")
-            return
-        }
-        if let first = trimmedUsername.first, !first.isUppercase {
-            showError("Имя должно начинаться с заглавной буквы")
+        // Проверка корректности email через регулярное выражение
+        let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
+        if !emailPredicate.evaluate(with: trimmedEmail) {
+            showError("Введите корректный адрес электронной почты")
             return
         }
         
-        // Проверка пароля: минимум 5 символов, наличие букв и цифр
+        // Проверка пароля: минимум 5 символов
         if password.count < 5 {
             showError("Пароль должен содержать не менее 5 символов")
             return
         }
-        let hasLetter = password.rangeOfCharacter(from: .letters) != nil
-        let hasDigit = password.rangeOfCharacter(from: .decimalDigits) != nil
-        if !hasLetter || !hasDigit {
-            showError("Пароль должен содержать буквы и цифры")
+        
+        // Проверка кода доступа (secretToken): ровно 6 символа
+        if accessCode.count != 6 {
+            showError("Код доступа должен содержать ровно 6 символа")
             return
         }
         
-        // Проверка кода доступа: ровно 4 символа
-        if accessCode.count != 4 {
-            showError("Код доступа должен содержать ровно 4 символа")
-            return
+        // Формируем запрос на вход с использованием email, password и secretToken
+        Task {
+            let result = await sendRepository.login(user: UserForSignIn(email: trimmedEmail, password: password, secretToken: accessCode))
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self.navigateToProjectList = true
+                case .inputDataError:
+                    self.showError("Неверный email, пароль или код доступа")
+                default:
+                    self.showError("Ошибка соединения с сервером")
+                }
+            }
         }
-        
-        // Все проверки пройдены – осуществляем переход на экран списка проектов
-        navigateToProjectList = true
     }
     
-    // Метод для отображения ошибки с автоскрытием через 5 секунд
     private func showError(_ message: String) {
         alertMessage = message
         showAlert = true
@@ -72,4 +76,3 @@ class CredentialsLoginViewModel: ObservableObject {
         }
     }
 }
-

@@ -54,6 +54,11 @@
 		FFCFFCCE2D9F29E800584702 /* PhotoPagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCCD2D9F29E800584702 /* PhotoPagerViewModel.swift */; };
 		FFCFFCD02D9F29FB00584702 /* PhotoPagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCCF2D9F29FB00584702 /* PhotoPagerView.swift */; };
 		FFCFFCD22D9F2A0D00584702 /* PhotoPagerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCD12D9F2A0D00584702 /* PhotoPagerViewController.swift */; };
+		FFCFFCD52DA2DCE200584702 /* RegistrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCD42DA2DCE200584702 /* RegistrationView.swift */; };
+		FFCFFCD72DA2DD1000584702 /* RegistrationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCD62DA2DD1000584702 /* RegistrationViewModel.swift */; };
+		FFCFFCDA2DA2EC2E00584702 /* ApiServiceModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCD92DA2EC2E00584702 /* ApiServiceModule.swift */; };
+		FFCFFCDC2DA2EE3200584702 /* ApiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCDB2DA2EE3200584702 /* ApiService.swift */; };
+		FFCFFCDE2DA2F12F00584702 /* SendRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCDD2DA2F12F00584702 /* SendRepository.swift */; };
 		FFFCDA5D2D68B79500681B3B /* DrawingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA5C2D68B79500681B3B /* DrawingViewModel.swift */; };
 		FFFCDA6B2D78C03400681B3B /* LineEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */; };
 		FFFCDA6D2D78C08100681B3B /* LineEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA6C2D78C08100681B3B /* LineEntity.swift */; };
@@ -132,6 +137,11 @@
 		FFCFFCCD2D9F29E800584702 /* PhotoPagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPagerViewModel.swift; sourceTree = "<group>"; };
 		FFCFFCCF2D9F29FB00584702 /* PhotoPagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPagerView.swift; sourceTree = "<group>"; };
 		FFCFFCD12D9F2A0D00584702 /* PhotoPagerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPagerViewController.swift; sourceTree = "<group>"; };
+		FFCFFCD42DA2DCE200584702 /* RegistrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegistrationView.swift; sourceTree = "<group>"; };
+		FFCFFCD62DA2DD1000584702 /* RegistrationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegistrationViewModel.swift; sourceTree = "<group>"; };
+		FFCFFCD92DA2EC2E00584702 /* ApiServiceModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiServiceModule.swift; sourceTree = "<group>"; };
+		FFCFFCDB2DA2EE3200584702 /* ApiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiService.swift; sourceTree = "<group>"; };
+		FFCFFCDD2DA2F12F00584702 /* SendRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendRepository.swift; sourceTree = "<group>"; };
 		FFFCDA5C2D68B79500681B3B /* DrawingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingViewModel.swift; sourceTree = "<group>"; };
 		FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LineEntity+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		FFFCDA6C2D78C08100681B3B /* LineEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineEntity.swift; sourceTree = "<group>"; };
@@ -237,6 +247,7 @@
 		FF994F7D2C9B55E10027A6D3 /* BuildingSurvey */ = {
 			isa = PBXGroup;
 			children = (
+				FFCFFCD82DA2EC0100584702 /* di */,
 				FFCFFCCC2D9F29D700584702 /* PhotoPager */,
 				FF9954382D972F8800997224 /* AudioNotes */,
 				FF92EC5F2D8DEDB6007132FD /* CredentialsLogin */,
@@ -248,6 +259,7 @@
 				FF994F842C9B55E30027A6D3 /* Preview Content */,
 				FF83513C2D5654BA002E64D2 /* bd */,
 				FF105B852CBEF731007E9C1E /* Repositories */,
+				FFCFFCD32DA2DC9A00584702 /* Registration */,
 				FFCC17E32D60CB2800BF061B /* Login */,
 				FFCC17DF2D60CA7E00BF061B /* ProjectList */,
 				FFCC17E02D60CAAC00BF061B /* CreateProject */,
@@ -360,6 +372,25 @@
 				FFCFFCD12D9F2A0D00584702 /* PhotoPagerViewController.swift */,
 			);
 			path = PhotoPager;
+			sourceTree = "<group>";
+		};
+		FFCFFCD32DA2DC9A00584702 /* Registration */ = {
+			isa = PBXGroup;
+			children = (
+				FFCFFCD42DA2DCE200584702 /* RegistrationView.swift */,
+				FFCFFCD62DA2DD1000584702 /* RegistrationViewModel.swift */,
+			);
+			path = Registration;
+			sourceTree = "<group>";
+		};
+		FFCFFCD82DA2EC0100584702 /* di */ = {
+			isa = PBXGroup;
+			children = (
+				FFCFFCD92DA2EC2E00584702 /* ApiServiceModule.swift */,
+				FFCFFCDB2DA2EE3200584702 /* ApiService.swift */,
+				FFCFFCDD2DA2F12F00584702 /* SendRepository.swift */,
+			);
+			path = di;
 			sourceTree = "<group>";
 		};
 		FFFCDA5B2D68B75000681B3B /* Drawing */ = {
@@ -505,6 +536,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FFCC17EA2D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift in Sources */,
+				FFCFFCD72DA2DD1000584702 /* RegistrationViewModel.swift in Sources */,
 				FF86A19C2D843E1600FB9FD6 /* TextEntity.swift in Sources */,
 				FF8351422D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift in Sources */,
 				FF99543B2D972F8800997224 /* AudioNotesViewModel.swift in Sources */,
@@ -514,10 +546,12 @@
 				FF92EC632D8DF10B007132FD /* CredentialsLoginViewModel.swift in Sources */,
 				FF92EC692D8DF813007132FD /* ProfileViewModel.swift in Sources */,
 				FFFCDA6F2D78C34500681B3B /* DrawingView.swift in Sources */,
+				FFCFFCDE2DA2F12F00584702 /* SendRepository.swift in Sources */,
 				FF83513B2D5654AB002E64D2 /* ProjectModel.xcdatamodeld in Sources */,
 				FF86A19A2D8430C800FB9FD6 /* PolylineEntity.swift in Sources */,
 				FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */,
 				FFCC17DA2D59108900BF061B /* AddDrawingView.swift in Sources */,
+				FFCFFCDC2DA2EE3200584702 /* ApiService.swift in Sources */,
 				FF86A19E2D849C7000FB9FD6 /* LayerEntity.swift in Sources */,
 				FF99543A2D972F8800997224 /* AudioNotesView.swift in Sources */,
 				FFCC17E82D60CF5500BF061B /* DrawingEntity.swift in Sources */,
@@ -543,6 +577,7 @@
 				FFCFFCD02D9F29FB00584702 /* PhotoPagerView.swift in Sources */,
 				FF2BE6F42D8A179300ED8FB4 /* RectangleEntity.swift in Sources */,
 				FFFCDA732D78CFCD00681B3B /* Line.swift in Sources */,
+				FFCFFCD52DA2DCE200584702 /* RegistrationView.swift in Sources */,
 				FF83513E2D5655BE002E64D2 /* CoreDataManager.swift in Sources */,
 				FF86A1982D81CC9C00FB9FD6 /* PointEntity.swift in Sources */,
 				FFCC17DE2D5916E900BF061B /* LoadPDF.swift in Sources */,
@@ -552,6 +587,7 @@
 				FF83512F2D4F7839002E64D2 /* LoadFile.swift in Sources */,
 				FF994FAF2CAAFA140027A6D3 /* ProjectListViewModel.swift in Sources */,
 				FF994F7F2C9B55E10027A6D3 /* BuildingSurveyApp.swift in Sources */,
+				FFCFFCDA2DA2EC2E00584702 /* ApiServiceModule.swift in Sources */,
 				FF994FB32CAAFA5F0027A6D3 /* Project.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

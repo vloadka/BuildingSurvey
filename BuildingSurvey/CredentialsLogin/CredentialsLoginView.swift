@@ -17,8 +17,8 @@ struct CredentialsLoginView: View {
             
             // Поле для ввода имени
             VStack(alignment: .leading) {
-                Text("Имя")
-                TextField("Введите имя", text: $viewModel.username)
+                Text("Почта")
+                TextField("Введите почту", text: $viewModel.email)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
             }
             
@@ -98,10 +98,14 @@ struct CredentialsLoginView: View {
 
 struct CredentialsLoginView_Previews: PreviewProvider {
     static var previews: some View {
+        let repository = GeneralRepository()
+        let sendRepository = SendRepository(apiService: ApiService.shared,
+                                            generalRepository: repository,
+                                            dataStoreManager: DummyDataStoreManager(),
+                                            customWorkManager: DummyCustomWorkManager())
         NavigationView {
-            CredentialsLoginView(viewModel: CredentialsLoginViewModel(repository: GeneralRepository()))
+            CredentialsLoginView(viewModel: CredentialsLoginViewModel(repository: repository, sendRepository: sendRepository))
         }
     }
 }
-
 
