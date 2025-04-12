@@ -30,33 +30,35 @@ class CredentialsLoginViewModel: ObservableObject {
     
     func loginAction() {
         let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
-        
-        // Проверка корректности email через регулярное выражение
+
         let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
         if !emailPredicate.evaluate(with: trimmedEmail) {
             showError("Введите корректный адрес электронной почты")
             return
         }
-        
-        // Проверка пароля: минимум 5 символов
+
         if password.count < 5 {
             showError("Пароль должен содержать не менее 5 символов")
             return
         }
-        
-        // Проверка кода доступа (secretToken): ровно 6 символа
+
         if accessCode.count != 6 {
-            showError("Код доступа должен содержать ровно 6 символа")
+            showError("Код доступа должен содержать ровно 6 символов")
             return
         }
-        
-        // Формируем запрос на вход с использованием email, password и secretToken
+
+        print("Отправляем login-запрос: email=\(trimmedEmail), password=•••, code=\(accessCode)")
+
         Task {
             let result = await sendRepository.login(user: UserForSignIn(email: trimmedEmail, password: password, secretToken: accessCode))
+            
+            print("Ответ от sendRepository.login:", result)
+
             DispatchQueue.main.async {
                 switch result {
                 case .success:
+                    print("Успешный вход.")
                     self.navigateToProjectList = true
                 case .inputDataError:
                     self.showError("Неверный email, пароль или код доступа")
@@ -66,6 +68,7 @@ class CredentialsLoginViewModel: ObservableObject {
             }
         }
     }
+
     
     private func showError(_ message: String) {
         alertMessage = message

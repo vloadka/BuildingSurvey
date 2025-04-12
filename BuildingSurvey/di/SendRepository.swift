@@ -45,17 +45,35 @@ extension GeneralRepository: GeneralRepositoryInterface { }
 protocol GeneralRepositoryInterface { }
 protocol CustomWorkManager { }
 
+// Тип загрузки данных – можно расширять по необходимости
+enum DataLoadStep {
+    case projects
+    // другие шаги, если нужны
+}
+
+// Структура ответа от сервера для списка проектов
+struct GetProjectsResponse: Decodable {
+    let content: [ProjectOnServer]
+    let last: Bool
+}
+
+// Модель проекта с сервера
+struct ProjectOnServer: Decodable {
+    let id: String
+    let name: String
+}
+
 class SendRepository {
     private var jwtToken: String = ""
     private let outputDir: URL?
     
     let apiService: ApiService
-    let generalRepository: GeneralRepositoryInterface
+    let generalRepository: GeneralRepository
     let dataStoreManager: DataStoreManager
     let customWorkManager: CustomWorkManager
     
     init(apiService: ApiService,
-         generalRepository: GeneralRepositoryInterface,
+         generalRepository: GeneralRepository,
          dataStoreManager: DataStoreManager,
          customWorkManager: CustomWorkManager) {
         self.apiService = apiService
@@ -105,36 +123,42 @@ class SendRepository {
     
     func login(user: UserForSignIn) async -> LoginResponse {
         do {
+            print("Выполняется login через ApiService...")
+
             let (_, httpResponse) = try await apiService.login(user: user)
-            if (200...299).contains(httpResponse.statusCode) {
-                let headerFields = httpResponse.allHeaderFields as? [String: String] ?? [:]
-                let cookies = HTTPCookie.cookies(withResponseHeaderFields: headerFields, for: apiService.baseURL)
-                var foundJwt = false
-                var foundRefresh = false
-                for cookie in cookies {
-                    if cookie.name == "jwt" {
-                        self.jwtToken = cookie.value
-                        foundJwt = true
-                    } else if cookie.name == "refresh" {
-                        await dataStoreManager.updateRefreshToken(token: cookie.value)
-                        foundRefresh = true
-                    }
-                }
-                if !foundJwt || !foundRefresh {
-                    return .internetError
+
+            print("HTTP статус login:", httpResponse.statusCode)
+            print("Заголовки ответа:", httpResponse.allHeaderFields)
+
+            let headerFields = httpResponse.allHeaderFields as? [String: String] ?? [:]
+            let cookies = HTTPCookie.cookies(withResponseHeaderFields: headerFields, for: apiService.baseURL)
+
+            var foundJwt = false
+            var foundRefresh = false
+            for cookie in cookies {
+                print("🔍 Cookie: \(cookie.name) = \(cookie.value)")
+                if cookie.name == "jwt" {
+                    self.jwtToken = cookie.value
+                    foundJwt = true
+                } else if cookie.name == "refresh" {
+                    await dataStoreManager.updateRefreshToken(token: cookie.value)
+                    foundRefresh = true
                 }
             }
-            if (200...299).contains(httpResponse.statusCode) {
-                return .success
-            } else if httpResponse.statusCode == 401 {
-                return .inputDataError
-            } else {
+
+            if !foundJwt || !foundRefresh {
+                print("Не найден jwt или refresh-token")
                 return .internetError
             }
+
+            return (200...299).contains(httpResponse.statusCode) ? .success : .inputDataError
+
         } catch {
+            print("Ошибка login запроса:", error)
             return .internetError
         }
     }
+
     
     func changeUserPassword(oldPassword: String, newPassword: String) async -> DefaultResponse {
         do {
@@ -297,4 +321,187 @@ class SendRepository {
            return .internetError
        }
    }
+    
+    // Функция для загрузки проектов с сервера с использованием функций generalRepository
+    func getProjects(startStep: DataLoadStep) async -> DefaultResponse {
+        do {
+            // Если загрузка начинается с проектов – очищаем локальное хранилище, если такая функция реализована
+            // Например: generalRepository.deleteAllProjects()
+            // Если такого метода нет, можно перебрать проекты и удалить их по отдельности:
+            // for project in generalRepository.allProjects { generalRepository.deleteProject(id: project.id) }
+            
+            var pageNum = 0
+            var isLastPage = false
+            var allProjects: [ProjectOnServer] = []
+            
+            // Пагинация: загружаем по 10 проектов за раз
+            while !isLastPage {
+                try await Task.sleep(nanoseconds: 150_000_000) // задержка 150 мс
+                let (projectsResponse, response) = try await apiService.getProjects(
+                    token: "jwt=\(jwtToken)",
+                    pageNum: pageNum,
+                    pageSize: 10
+                )
+                let result = await handleResponse(response)
+                if result == DefaultResponse.retry {
+                    return await getProjects(startStep: startStep)
+                }
+                if result != DefaultResponse.success {
+                    return result
+                }
+                allProjects.append(contentsOf: projectsResponse.content)
+                isLastPage = projectsResponse.last
+                pageNum += 1
+            }
+            
+            // Обрабатываем каждый проект: получаем фото и (при необходимости) аудио
+            for project in allProjects {
+                try await Task.sleep(nanoseconds: 150_000_000)
+                let (photoResult, photoPath) = await getProjectPhoto(for: project)
+                if photoResult != DefaultResponse.success {
+                    return photoResult
+                }
+                
+                // Загружаем данные обложки из файла, если путь не пустой
+                var coverData: Data? = nil
+                if !photoPath.isEmpty, let data = try? Data(contentsOf: URL(fileURLWithPath: photoPath)) {
+                    coverData = data
+                }
+                // Сохраняем проект локально – метод addProject принимает name и coverImageData
+                generalRepository.addProject(name: project.name, coverImageData: coverData)
+                
+                try await Task.sleep(nanoseconds: 150_000_000)
+                let (audioResult, audioPath) = await getAudioProject(for: project)
+                if audioResult == DefaultResponse.success && !audioPath.isEmpty {
+                    if let audioData = try? Data(contentsOf: URL(fileURLWithPath: audioPath)) {
+                        // Сохраняем аудио через функцию saveAudio
+                        generalRepository.saveAudio(forProject: Project(name: project.name, coverImageData: coverData),
+                                                    audioData: audioData,
+                                                    timestamp: Date(),
+                                                    drawingName: "Audio")
+                    }
+                } else if audioResult != DefaultResponse.success {
+                    return audioResult
+                }
+            }
+            
+            return DefaultResponse.success
+        } catch {
+            return DefaultResponse.internetError
+        }
+    }
+
+    // Функция для загрузки фото проекта с сервера
+    func getProjectPhoto(for project: ProjectOnServer) async -> (DefaultResponse, String) {
+        do {
+            let (data, response) = try await apiService.getProjectPhoto(
+                token: "jwt=\(jwtToken)",
+                id: project.id
+            )
+            let result = await handleResponse(response)
+            if result == .retry {
+                return await getProjectPhoto(for: project)
+            }
+            if result != .success {
+                return (result, "")
+            }
+            // Читаем заголовок Content-Disposition для определения имени файла
+            if let contentDisposition = response.allHeaderFields["Content-Disposition"] as? String,
+               !contentDisposition.isEmpty {
+                if let savedFilePath = saveResponseToFile(
+                    responseBody: data,
+                    contentDisposition: contentDisposition,
+                    name: "\(UUID().uuidString)_project"
+                ) {
+                    return (.success, savedFilePath)
+                } else {
+                    return (.internetError, "")
+                }
+            } else {
+                return (.success, "")
+            }
+        } catch {
+            return (.internetError, "")
+        }
+    }
+    
+    // Функция для загрузки аудио для проекта с сервера
+    func getAudioProject(for project: ProjectOnServer) async -> (DefaultResponse, String) {
+        do {
+            // Выполняем запрос к API для получения аудио проекта
+            let (data, response) = try await apiService.getAudioProject(
+                token: "jwt=\(jwtToken)",
+                id: project.id
+            )
+            let result = await handleResponse(response)
+            if result == .noSuchElement {
+                return (.success, "")
+            }
+            if result == .retry {
+                return await getAudioProject(for: project)
+            }
+            if result != .success {
+                return (result, "")
+            }
+            // Проверяем наличие данных
+            guard !data.isEmpty else {
+                return (.internetError, "")
+            }
+            // Получаем заголовок Content-Disposition для извлечения расширения файла
+            let contentDisposition = response.allHeaderFields["Content-Disposition"] as? String
+            // Сохраняем данные в файл и получаем путь
+            guard let savedFilePath = saveResponseToFile(
+                responseBody: data,
+                contentDisposition: contentDisposition,
+                name: "\(UUID().uuidString)_audio"
+            ) else {
+                return (.internetError, "")
+            }
+            return (.success, savedFilePath)
+        } catch {
+            return (.internetError, "")
+        }
+    }
+
+    // Функция для сохранения данных ответа в файл и возврата пути к нему
+    func saveResponseToFile(responseBody: Data, contentDisposition: String?, name: String, forcedExtension: String? = nil) -> String? {
+        var fileExtension: String
+        if let forced = forcedExtension {
+            fileExtension = forced
+        } else {
+            // Используем регулярное выражение для извлечения имени файла из Content-Disposition
+            guard let cd = contentDisposition else { return nil }
+            let pattern = "filename=\"?([^\";]+)\"?"
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
+            let nsString = cd as NSString
+            let results = regex.matches(in: cd, options: [], range: NSRange(location: 0, length: nsString.length))
+            guard let match = results.first, match.numberOfRanges > 1 else { return nil }
+            let fileName = nsString.substring(with: match.range(at: 1))
+            // Извлекаем расширение после последней точки
+            if let dotRange = fileName.range(of: ".", options: .backwards) {
+                fileExtension = String(fileName[dotRange.upperBound...])
+            } else {
+                fileExtension = ""
+            }
+        }
+        // Если расширение пустое и имя содержит "_audio", используем "mp4"
+        if fileExtension.isEmpty {
+            if name.contains("_audio") {
+                fileExtension = "mp4"
+            } else {
+                return nil
+            }
+        }
+        let newFileName = "\(name).\(fileExtension)"
+        // outputDir – директория для сохранения файлов (устанавливается при инициализации SendRepository)
+        guard let outputDir = outputDir else { return nil }
+        let fileURL = outputDir.appendingPathComponent(newFileName)
+        do {
+            try responseBody.write(to: fileURL)
+            return fileURL.path
+        } catch {
+            return nil
+        }
+    }
+    
 }

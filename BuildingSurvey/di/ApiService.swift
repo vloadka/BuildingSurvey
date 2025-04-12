@@ -80,7 +80,7 @@ struct TextBody: Codable {
 
 class ApiService {
     static let shared = ApiService()
-    let baseURL = URL(string: "http://192.168.1.189:8080")!
+    let baseURL = URL(string: "http://192.168.0.189:8080")!
     private let session: URLSession
     
     private init() {
@@ -427,5 +427,52 @@ class ApiService {
         }
         let decoded = try JSONDecoder().decode(UuidResponse.self, from: data)
         return (decoded, httpResponse)
+    }
+    
+    // Получение списка проектов с сервера
+    func getProjects(token: String, pageNum: Int, pageSize: Int) async throws -> (GetProjectsResponse, HTTPURLResponse) {
+        let url = baseURL.appendingPathComponent("/api/v1/inspections")
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        components.queryItems = [ URLQueryItem(name: "pageNum", value: "(pageNum)"),
+                                  URLQueryItem(name: "pageSize", value: "(pageSize)") ]
+        
+        guard let finalURL = components.url else {
+            throw URLError(.badURL)
+        }
+        var request = URLRequest(url: finalURL)
+        request.httpMethod = "GET"
+        request.setValue(token, forHTTPHeaderField: "Cookie")
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        let decoded = try JSONDecoder().decode(GetProjectsResponse.self, from: data) 
+        return (decoded, httpResponse)
+    }
+
+    // Получение фото проекта с сервера
+    func getProjectPhoto(token: String, id: String) async throws -> (Data, HTTPURLResponse) {
+        let url = baseURL.appendingPathComponent("/api/v1/inspections/\(id)/main-photo")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(token, forHTTPHeaderField: "Cookie")
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        return (data, httpResponse)
+    }
+
+    // Получение аудио проекта с сервера
+    func getAudioProject(token: String, id: String) async throws -> (Data, HTTPURLResponse) {
+        let url = baseURL.appendingPathComponent("/api/v1/inspections/\(id)/audio")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(token, forHTTPHeaderField: "Cookie")
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        return (data, httpResponse)
     }
 }
