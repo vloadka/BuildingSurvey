@@ -69,6 +69,7 @@
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="projectFilePath" optional="YES" attributeType="String"/>
+        <attribute name="servId" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="audio" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="AudioEntity" inverseName="project" inverseEntity="AudioEntity"/>
         <relationship name="drawings" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="DrawingEntity" inverseName="project" inverseEntity="DrawingEntity"/>
         <relationship name="layers" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LayerEntity" inverseName="project" inverseEntity="LayerEntity"/>

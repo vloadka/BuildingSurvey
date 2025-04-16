@@ -19,14 +19,21 @@ class GeneralRepository: ObservableObject {
     var projectsListPublisher: Published<[Project]>.Publisher {
         return $_projectsList
     }
+    
+    var currentProjects: [Project] {
+        return _projectsList  // Используется уже загруженный список проектов
+    }
 
     init() {
         loadProjects()
     }
 
-    func addProject(name: String, coverImageData: Data? = nil) {
+//    func addProject(name: String, servId: String? = nil, coverImageData: Data? = nil) {
+    func addProject(name: String, servId: Int? = nil, coverImageData: Data? = nil) {
         let newProject = ProjectEntity(context: context)
         newProject.id = UUID()
+//        newProject.servId = servId
+        newProject.servId = servId.map { NSNumber(value: $0) } as! Int64
         newProject.name = name
         newProject.coverImageData = coverImageData
         saveContext()
@@ -55,6 +62,7 @@ class GeneralRepository: ObservableObject {
             _projectsList = fetchedProjects.map { projectEntity in
                 Project(
                     id: projectEntity.id ?? UUID(),
+                    servId: Int(projectEntity.servId),
                     name: projectEntity.name ?? "Без названия",
                     coverImageData: projectEntity.coverImageData
                 )

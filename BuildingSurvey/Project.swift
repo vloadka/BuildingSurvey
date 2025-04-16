@@ -9,7 +9,8 @@ import Foundation
 
 struct Project: Identifiable, Hashable {
     var id = UUID()
+//    var servId: String? = nil
+    var servId: Int? = nil
     var name: String
-    var coverImageData: Data? // Данные изображения обложки проекта
+    var coverImageData: Data?
 }
-

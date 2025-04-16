@@ -18,7 +18,9 @@ class CredentialsLoginViewModel: ObservableObject {
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
     
+    // Флаги навигации:
     @Published var navigateToProjectList: Bool = false
+    @Published var navigateToEmailConfirmation: Bool = false
     
     var repository: GeneralRepository
     var sendRepository: SendRepository
@@ -30,36 +32,45 @@ class CredentialsLoginViewModel: ObservableObject {
     
     func loginAction() {
         let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
-
+        
         let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
         if !emailPredicate.evaluate(with: trimmedEmail) {
             showError("Введите корректный адрес электронной почты")
             return
         }
-
+        
         if password.count < 5 {
             showError("Пароль должен содержать не менее 5 символов")
             return
         }
-
+        
         if accessCode.count != 6 {
             showError("Код доступа должен содержать ровно 6 символов")
             return
         }
-
+        
         print("Отправляем login-запрос: email=\(trimmedEmail), password=•••, code=\(accessCode)")
-
+        
         Task {
-            let result = await sendRepository.login(user: UserForSignIn(email: trimmedEmail, password: password, secretToken: accessCode))
-            
+            let result = await self.sendRepository.login(user: UserForSignIn(email: trimmedEmail, password: password, secretToken: accessCode))
             print("Ответ от sendRepository.login:", result)
-
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    print("Успешный вход.")
-                    self.navigateToProjectList = true
+                    // После успешного входа проверяем, подтверждена ли почта.
+                    Task {
+                        let (_, emailVerified) = await self.sendRepository.checkEmailConfirmation()
+                        DispatchQueue.main.async {
+                            if emailVerified {
+                                print("Email is verified. Navigating to ProjectListView.")
+                                self.navigateToProjectList = true
+                            } else {
+                                print("Email is not verified. Navigating to EmailConfirmationView.")
+                                self.navigateToEmailConfirmation = true
+                            }
+                        }
+                    }
                 case .inputDataError:
                     self.showError("Неверный email, пароль или код доступа")
                 default:
@@ -68,7 +79,6 @@ class CredentialsLoginViewModel: ObservableObject {
             }
         }
     }
-
     
     private func showError(_ message: String) {
         alertMessage = message

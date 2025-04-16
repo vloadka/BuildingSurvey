@@ -43,7 +43,23 @@ struct UserData: Codable {
 
 struct InspectionIdResponse: Codable {
     let id: String
+
+    enum CodingKeys: String, CodingKey {
+        case id = "inspectionId"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Пытаемся декодировать как Int
+        if let intId = try? container.decode(Int.self, forKey: .id) {
+            self.id = String(intId)
+        } else {
+            // Иначе как String
+            self.id = try container.decode(String.self, forKey: .id)
+        }
+    }
 }
+
 
 struct ProjectInfo: Codable {
     let name: String
@@ -78,8 +94,13 @@ struct TextBody: Codable {
     let text: String
 }
 
+struct Verified: Codable {
+    let verified: Bool
+}
+
 class ApiService {
     static let shared = ApiService()
+//    let baseURL = URL(string: "http://192.168.0.189:8080")!
     let baseURL = URL(string: "http://192.168.0.189:8080")!
     private let session: URLSession
     
@@ -178,12 +199,26 @@ class ApiService {
         request.httpMethod = "POST"
         request.setValue(token, forHTTPHeaderField: "Cookie")
         
+        print("DEBUG [createEmptyProject] Отправляем POST запрос на \(url) с токеном: \(token)")
+        
         // Выполнение запроса без тела
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw URLError(.badServerResponse)
+             throw URLError(.badServerResponse)
+        }
+        print("DEBUG [createEmptyProject] Получен ответ с кодом: \(httpResponse.statusCode)")
+        if let bodyString = String(data: data, encoding: .utf8) {
+            print("DEBUG [createEmptyProject] Тело ответа: \(bodyString)")
+        }
+        print("DEBUG [createEmptyProject] Получен ответ с кодом: \(httpResponse.statusCode)")
+        if !(200...299).contains(httpResponse.statusCode) {
+             if let jsonString = String(data: data, encoding: .utf8) {
+                 print("DEBUG [createEmptyProject] Response body: \(jsonString)")
+             }
+             throw URLError(.badServerResponse)
         }
         let decoded = try JSONDecoder().decode(InspectionIdResponse.self, from: data)
+        print("DEBUG [createEmptyProject] Декодированный объект: \(decoded)")
         return (decoded, httpResponse)
     }
     
@@ -194,49 +229,68 @@ class ApiService {
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(token, forHTTPHeaderField: "Cookie")
-        request.httpBody = try JSONEncoder().encode(projectInfo)
+        
+        let requestBody = try JSONEncoder().encode(projectInfo)
+        print("[addNameProject] Отправляем PUT запрос на \(url.absoluteString) с телом: \(String(data: requestBody, encoding: .utf8) ?? "nil")")
+        
+        request.httpBody = requestBody
         
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("[addNameProject] Неверный тип ответа")
             throw URLError(.badServerResponse)
         }
+        print("[addNameProject] Получен ответ с кодом: \(httpResponse.statusCode)")
+        
         return (data, httpResponse)
     }
+
     
+    // Метод для отправки файла-обложки проекта на сервер по URL
     // Multipart POST /api/v1/inspections/{id}/main-photo
     func addAvatarProject(token: String, id: String, fileData: Data, fileName: String) async throws -> (Data, HTTPURLResponse) {
-        let url = baseURL.appendingPathComponent("/api/v1/project/addAvatar")
+        let url = baseURL.appendingPathComponent("/api/v1/inspections/\(id)/main-photo")
+        print("DEBUG: addAvatarProject - URL: \(url)")
+        
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue(token, forHTTPHeaderField: "Cookie")
         
-        // Формируем multipart/form-data
+        // Устанавливаем заголовок Cookie с токеном
+        request.setValue(token, forHTTPHeaderField: "Cookie")
+        print("DEBUG: addAvatarProject - Token: \(token)")
+        
+        // Формирование multipart/form-data
         let boundary = "Boundary-\(UUID().uuidString)"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        print("DEBUG: addAvatarProject - Boundary: \(boundary)")
         
         var body = Data()
-        
-        // Если требуется, передаём идентификатор проекта в теле запроса
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"id\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(id)\r\n".data(using: .utf8)!)
-        
-        // Добавляем файл обложки
+
+        // Добавляем файл-обложку
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
         body.append(fileData)
         body.append("\r\n".data(using: .utf8)!)
+        print("DEBUG: addAvatarProject - Added file to body with name: \(fileName), file size: \(fileData.count) bytes")
         
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-        request.httpBody = body
         
+        request.httpBody = body
+        print("DEBUG: addAvatarProject - Request body formed (size: \(body.count) bytes). Starting network request...")
+        
+        // Выполняем запрос
         let (data, response) = try await session.data(for: request)
+        
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("DEBUG: addAvatarProject - Response is not a HTTPURLResponse")
             throw URLError(.badServerResponse)
         }
+        
+        print("DEBUG: addAvatarProject - Received response with status code: \(httpResponse.statusCode)")
         return (data, httpResponse)
     }
+
 
         
     // DELETE /api/v1/inspections/{id}
@@ -429,13 +483,60 @@ class ApiService {
         return (decoded, httpResponse)
     }
     
-    // Получение списка проектов с сервера
+//    // Получение списка проектов с сервера
+//    func getProjects(token: String, pageNum: Int, pageSize: Int) async throws -> (GetProjectsResponse, HTTPURLResponse) {
+//        let url = baseURL.appendingPathComponent("/api/v1/inspections")
+//        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+//        components.queryItems = [
+//            URLQueryItem(name: "pageNum", value: "\(pageNum)"),
+//            URLQueryItem(name: "pageSize", value: "\(pageSize)")
+//        ]
+//        guard let finalURL = components.url else {
+//            throw URLError(.badURL)
+//        }
+//        var request = URLRequest(url: finalURL)
+//        request.httpMethod = "GET"
+//        request.setValue(token, forHTTPHeaderField: "Cookie")
+//        let (data, response) = try await session.data(for: request)
+//        guard let httpResponse = response as? HTTPURLResponse else {
+//            throw URLError(.badServerResponse)
+//        }
+//        let decoded = try JSONDecoder().decode(GetProjectsResponse.self, from: data)
+//        return (decoded, httpResponse)
+//    }
+    
+//    func getProjects(token: String, pageNum: Int, pageSize: Int) async throws -> (GetProjectsResponse, HTTPURLResponse)
+//    {
+//        let url = baseURL.appendingPathComponent("/api/v1/inspections")
+//        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+//        components.queryItems = [
+//            URLQueryItem(name: "pageNum", value: "(pageNum)"),
+//            URLQueryItem(name: "pageSize", value: "(pageSize)")
+//        ]
+//        guard let finalURL = components.url else {
+//            throw URLError(.badURL)
+//        }
+//        var request = URLRequest(url: finalURL)
+//        request.httpMethod = "GET"
+//        request.setValue(token, forHTTPHeaderField: "Cookie")
+//        let (data, response) = try await session.data(for: request)
+//        guard let httpResponse = response as? HTTPURLResponse else {
+//            throw URLError(.badServerResponse)
+//        }
+//        print("DEBUG [getProjects] Получены данные: (String(data: data, encoding: .utf8)")
+//        let decoder = JSONDecoder()
+//        decoder.keyDecodingStrategy = .convertFromSnakeCase
+//        let decoded = try decoder.decode(GetProjectsResponse.self, from: data)
+//        return (decoded, httpResponse)
+//    }
+    
     func getProjects(token: String, pageNum: Int, pageSize: Int) async throws -> (GetProjectsResponse, HTTPURLResponse) {
         let url = baseURL.appendingPathComponent("/api/v1/inspections")
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
-        components.queryItems = [ URLQueryItem(name: "pageNum", value: "(pageNum)"),
-                                  URLQueryItem(name: "pageSize", value: "(pageSize)") ]
-        
+        components.queryItems = [
+            URLQueryItem(name: "pageNum", value: "\(pageNum)"),
+            URLQueryItem(name: "pageSize", value: "\(pageSize)")
+        ]
         guard let finalURL = components.url else {
             throw URLError(.badURL)
         }
@@ -446,12 +547,19 @@ class ApiService {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
-        let decoded = try JSONDecoder().decode(GetProjectsResponse.self, from: data) 
+        
+        print("DEBUG [getProjects] Получены данные: \(String(data: data, encoding: .utf8) ?? "Пустой ответ")")
+        
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let decoded = try decoder.decode(GetProjectsResponse.self, from: data)
         return (decoded, httpResponse)
     }
 
+
     // Получение фото проекта с сервера
-    func getProjectPhoto(token: String, id: String) async throws -> (Data, HTTPURLResponse) {
+//    func getProjectPhoto(token: String, id: String) async throws -> (Data, HTTPURLResponse) {
+    func getProjectPhoto(token: String, id: Int) async throws -> (Data, HTTPURLResponse) {
         let url = baseURL.appendingPathComponent("/api/v1/inspections/\(id)/main-photo")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -464,7 +572,8 @@ class ApiService {
     }
 
     // Получение аудио проекта с сервера
-    func getAudioProject(token: String, id: String) async throws -> (Data, HTTPURLResponse) {
+//    func getAudioProject(token: String, id: String) async throws -> (Data, HTTPURLResponse) {
+    func getAudioProject(token: String, id: Int) async throws -> (Data, HTTPURLResponse) {
         let url = baseURL.appendingPathComponent("/api/v1/inspections/\(id)/audio")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -474,5 +583,33 @@ class ApiService {
             throw URLError(.badServerResponse)
         }
         return (data, httpResponse)
+    }
+    
+    // Новый метод refresh – соответствует эндпоинту @GET("/api/v1/auth/refresh")
+    func refresh(token: String) async throws -> (Data, HTTPURLResponse) {
+        let url = baseURL.appendingPathComponent("/api/v1/auth/refresh")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(token, forHTTPHeaderField: "Cookie")
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        return (data, httpResponse)
+    }
+    
+    // Проверяет подтверждение email через эндпоинт
+    //GET /api/v1/account
+    func checkEmailConfirmation(token: String) async throws -> (Verified, HTTPURLResponse) {
+        let url = baseURL.appendingPathComponent("/api/v1/account")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(token, forHTTPHeaderField: "Cookie")
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        let verified = try JSONDecoder().decode(Verified.self, from: data)
+        return (verified, httpResponse)
     }
 }

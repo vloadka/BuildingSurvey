@@ -59,6 +59,9 @@
 		FFCFFCDA2DA2EC2E00584702 /* ApiServiceModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCD92DA2EC2E00584702 /* ApiServiceModule.swift */; };
 		FFCFFCDC2DA2EE3200584702 /* ApiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCDB2DA2EE3200584702 /* ApiService.swift */; };
 		FFCFFCDE2DA2F12F00584702 /* SendRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCDD2DA2F12F00584702 /* SendRepository.swift */; };
+		FFCFFCE12DAAB13900584702 /* DataStoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCE02DAAB13900584702 /* DataStoreManager.swift */; };
+		FFCFFCE42DAC087100584702 /* EmailConfirmationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCE32DAC087100584702 /* EmailConfirmationView.swift */; };
+		FFCFFCE62DAC08C700584702 /* EmailConfirmationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCFFCE52DAC08C700584702 /* EmailConfirmationViewModel.swift */; };
 		FFFCDA5D2D68B79500681B3B /* DrawingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA5C2D68B79500681B3B /* DrawingViewModel.swift */; };
 		FFFCDA6B2D78C03400681B3B /* LineEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */; };
 		FFFCDA6D2D78C08100681B3B /* LineEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFCDA6C2D78C08100681B3B /* LineEntity.swift */; };
@@ -142,6 +145,9 @@
 		FFCFFCD92DA2EC2E00584702 /* ApiServiceModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiServiceModule.swift; sourceTree = "<group>"; };
 		FFCFFCDB2DA2EE3200584702 /* ApiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiService.swift; sourceTree = "<group>"; };
 		FFCFFCDD2DA2F12F00584702 /* SendRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendRepository.swift; sourceTree = "<group>"; };
+		FFCFFCE02DAAB13900584702 /* DataStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStoreManager.swift; sourceTree = "<group>"; };
+		FFCFFCE32DAC087100584702 /* EmailConfirmationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailConfirmationView.swift; sourceTree = "<group>"; };
+		FFCFFCE52DAC08C700584702 /* EmailConfirmationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailConfirmationViewModel.swift; sourceTree = "<group>"; };
 		FFFCDA5C2D68B79500681B3B /* DrawingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingViewModel.swift; sourceTree = "<group>"; };
 		FFFCDA6A2D78C03400681B3B /* LineEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LineEntity+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		FFFCDA6C2D78C08100681B3B /* LineEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineEntity.swift; sourceTree = "<group>"; };
@@ -247,6 +253,8 @@
 		FF994F7D2C9B55E10027A6D3 /* BuildingSurvey */ = {
 			isa = PBXGroup;
 			children = (
+				FFCFFCE22DAC084300584702 /* EmailConfirmation */,
+				FFCFFCDF2DAAB0BC00584702 /* datastore */,
 				FFCFFCD82DA2EC0100584702 /* di */,
 				FFCFFCCC2D9F29D700584702 /* PhotoPager */,
 				FF9954382D972F8800997224 /* AudioNotes */,
@@ -393,6 +401,23 @@
 			path = di;
 			sourceTree = "<group>";
 		};
+		FFCFFCDF2DAAB0BC00584702 /* datastore */ = {
+			isa = PBXGroup;
+			children = (
+				FFCFFCE02DAAB13900584702 /* DataStoreManager.swift */,
+			);
+			path = datastore;
+			sourceTree = "<group>";
+		};
+		FFCFFCE22DAC084300584702 /* EmailConfirmation */ = {
+			isa = PBXGroup;
+			children = (
+				FFCFFCE32DAC087100584702 /* EmailConfirmationView.swift */,
+				FFCFFCE52DAC08C700584702 /* EmailConfirmationViewModel.swift */,
+			);
+			path = EmailConfirmation;
+			sourceTree = "<group>";
+		};
 		FFFCDA5B2D68B75000681B3B /* Drawing */ = {
 			isa = PBXGroup;
 			children = (
@@ -537,6 +562,7 @@
 			files = (
 				FFCC17EA2D60D32500BF061B /* DrawingEntity+CoreDataProperties.swift in Sources */,
 				FFCFFCD72DA2DD1000584702 /* RegistrationViewModel.swift in Sources */,
+				FFCFFCE42DAC087100584702 /* EmailConfirmationView.swift in Sources */,
 				FF86A19C2D843E1600FB9FD6 /* TextEntity.swift in Sources */,
 				FF8351422D56596E002E64D2 /* ProjectEntity+CoreDataProperties.swift in Sources */,
 				FF99543B2D972F8800997224 /* AudioNotesViewModel.swift in Sources */,
@@ -550,11 +576,13 @@
 				FF83513B2D5654AB002E64D2 /* ProjectModel.xcdatamodeld in Sources */,
 				FF86A19A2D8430C800FB9FD6 /* PolylineEntity.swift in Sources */,
 				FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */,
+				FFCFFCE12DAAB13900584702 /* DataStoreManager.swift in Sources */,
 				FFCC17DA2D59108900BF061B /* AddDrawingView.swift in Sources */,
 				FFCFFCDC2DA2EE3200584702 /* ApiService.swift in Sources */,
 				FF86A19E2D849C7000FB9FD6 /* LayerEntity.swift in Sources */,
 				FF99543A2D972F8800997224 /* AudioNotesView.swift in Sources */,
 				FFCC17E82D60CF5500BF061B /* DrawingEntity.swift in Sources */,
+				FFCFFCE62DAC08C700584702 /* EmailConfirmationViewModel.swift in Sources */,
 				FF92EC672D8DF54B007132FD /* ProfileView.swift in Sources */,
 				FF86A1A02D84ACFD00FB9FD6 /* AddLayerViewController.swift in Sources */,
 				FF8351312D4F78B0002E64D2 /* TakePhoto.swift in Sources */,

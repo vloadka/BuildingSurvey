@@ -13,8 +13,7 @@ struct LoginView: View {
     var body: some View {
         // Создаем sendRepository для передачи в RegistrationViewModel
         let sendRepository = SendRepository(apiService: ApiService.shared,
-                                            generalRepository: repository,
-                                            dataStoreManager: DummyDataStoreManager(),
+                                            generalRepository: repository ,
                                             customWorkManager: DummyCustomWorkManager())
         
         VStack {

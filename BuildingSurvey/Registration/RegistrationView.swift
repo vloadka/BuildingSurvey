@@ -205,7 +205,6 @@ struct RegistrationView_Previews: PreviewProvider {
         let repository = GeneralRepository()
         let sendRepository = SendRepository(apiService: ApiService.shared,
                                             generalRepository: repository,
-                                            dataStoreManager: DummyDataStoreManager(),
                                             customWorkManager: DummyCustomWorkManager())
         let viewModel = RegistrationViewModel(repository: repository, sendRepository: sendRepository)
         

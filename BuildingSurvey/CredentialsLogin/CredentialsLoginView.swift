@@ -15,60 +15,60 @@ struct CredentialsLoginView: View {
             Text("Вход в систему")
                 .font(.title)
             
-            // Поле для ввода имени
             VStack(alignment: .leading) {
                 Text("Почта")
                 TextField("Введите почту", text: $viewModel.email)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
             }
             
-            // Поле для ввода пароля с кнопкой показа/скрытия
             VStack(alignment: .leading) {
                 Text("Пароль")
                 ZStack(alignment: .trailing) {
-                    Group {
-                        if viewModel.showPassword {
-                            TextField("Введите пароль", text: $viewModel.password)
-                        } else {
-                            SecureField("Введите пароль", text: $viewModel.password)
-                        }
+                    if viewModel.showPassword {
+                        TextField("Введите пароль", text: $viewModel.password)
+                    } else {
+                        SecureField("Введите пароль", text: $viewModel.password)
                     }
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    Button(action: {
-                        viewModel.showPassword.toggle()
-                    }) {
-                        Image(systemName: viewModel.showPassword ? "eye.slash" : "eye")
-                            .foregroundColor(.black)
-                    }
-                    .padding(.trailing, 8)
                 }
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .overlay(
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            viewModel.showPassword.toggle()
+                        }) {
+                            Image(systemName: viewModel.showPassword ? "eye.slash" : "eye")
+                                .foregroundColor(.black)
+                        }
+                        .padding(.trailing, 8)
+                    }
+                )
             }
             
-            // Поле для ввода кода доступа с кнопкой показа/скрытия
             VStack(alignment: .leading) {
                 Text("Код доступа")
                 ZStack(alignment: .trailing) {
-                    Group {
-                        if viewModel.showAccessCode {
-                            TextField("Введите код доступа", text: $viewModel.accessCode)
-                        } else {
-                            SecureField("Введите код доступа", text: $viewModel.accessCode)
-                        }
+                    if viewModel.showAccessCode {
+                        TextField("Введите код доступа", text: $viewModel.accessCode)
+                    } else {
+                        SecureField("Введите код доступа", text: $viewModel.accessCode)
                     }
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    Button(action: {
-                        viewModel.showAccessCode.toggle()
-                    }) {
-                        Image(systemName: viewModel.showAccessCode ? "eye.slash" : "eye")
-                            .foregroundColor(.black)
-                    }
-                    .padding(.trailing, 8)
                 }
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .overlay(
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            viewModel.showAccessCode.toggle()
+                        }) {
+                            Image(systemName: viewModel.showAccessCode ? "eye.slash" : "eye")
+                                .foregroundColor(.black)
+                        }
+                        .padding(.trailing, 8)
+                    }
+                )
             }
             
-            // Кнопка для входа с черным фоном
             Button(action: {
                 viewModel.loginAction()
             }) {
@@ -82,10 +82,16 @@ struct CredentialsLoginView: View {
             }
             .padding(.top, 20)
             
-            // Скрытый NavigationLink для перехода на экран ProjectListView
+            // Навигация в зависимости от результата проверки email.
             NavigationLink(
                 destination: ProjectListView(viewModel: ProjectListViewModel(repository: viewModel.repository)),
                 isActive: $viewModel.navigateToProjectList,
+                label: { EmptyView() }
+            )
+            
+            NavigationLink(
+                destination: EmailConfirmationView(viewModel: EmailConfirmationViewModel(sendRepository: viewModel.sendRepository, repository: viewModel.repository)),
+                isActive: $viewModel.navigateToEmailConfirmation,
                 label: { EmptyView() }
             )
         }
@@ -101,11 +107,11 @@ struct CredentialsLoginView_Previews: PreviewProvider {
         let repository = GeneralRepository()
         let sendRepository = SendRepository(apiService: ApiService.shared,
                                             generalRepository: repository,
-                                            dataStoreManager: DummyDataStoreManager(),
                                             customWorkManager: DummyCustomWorkManager())
         NavigationView {
             CredentialsLoginView(viewModel: CredentialsLoginViewModel(repository: repository, sendRepository: sendRepository))
         }
     }
 }
+
 
