@@ -11,6 +11,7 @@
         <attribute name="filePath" optional="YES" attributeType="String"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="pdfData" optional="YES" attributeType="Binary"/>
         <relationship name="lines" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="LineEntity" inverseName="drawing" inverseEntity="LineEntity"/>
         <relationship name="photos" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PhotoEntity" inverseName="drawing" inverseEntity="PhotoEntity"/>
         <relationship name="points" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PointEntity" inverseName="drawing" inverseEntity="PointEntity"/>

@@ -11,4 +11,5 @@ struct Drawing: Identifiable, Hashable {
     var id: UUID
     var name: String
     var filePath: String?
+    var pdfData: Data?
 }

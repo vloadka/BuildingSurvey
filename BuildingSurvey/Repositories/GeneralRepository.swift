@@ -72,7 +72,7 @@ class GeneralRepository: ObservableObject {
         }
     }
 
-    func addDrawing(for project: Project, name: String, filePath: String?) {
+    func addDrawing(for project: Project, name: String, filePath: String?, pdfData: Data?) {
         let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", project.id as CVarArg)
 
@@ -82,11 +82,30 @@ class GeneralRepository: ObservableObject {
                 newDrawing.id = UUID()
                 newDrawing.name = name
                 newDrawing.filePath = filePath
+                newDrawing.pdfData = pdfData
                 newDrawing.project = projectEntity
 
                 context.insert(newDrawing)
                 saveContext()
                 
+                // ——— ЛОГИРУЕМ содержимое только что добавленного чертежа ———
+                print("🗄️ Added DrawingEntity:")
+                print("    • id:          \(newDrawing.id!.uuidString)")
+                print("    • name:        '\(newDrawing.name ?? "")'")
+                print("    • filePath:    '\(newDrawing.filePath ?? "nil")'")
+                print("    • pdfDataSize: \(newDrawing.pdfData?.count ?? 0) bytes")
+                
+                // ——— ЛОГ: выводим всю базу чертежей ———
+                let fetchAll: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+                    do {
+                        let allDrawings = try context.fetch(fetchAll)
+                        print("🗄️ Всего чертежей в БД: \(allDrawings.count)")
+                        for drawing in allDrawings {
+                            print("    • id: \(drawing.id?.uuidString ?? "nil"), name: '\(drawing.name ?? "")', filePath: '\(drawing.filePath ?? "nil")', pdfDataSize: \(drawing.pdfData?.count ?? 0) bytes")
+                        }
+                    } catch {
+                        print("Ошибка выборки всех чертежей: \(error)")
+                    }
                 print("Добавлен чертеж \(name) для проекта \(project.id)")
             } else {
                 print("Ошибка: проект не найден")
@@ -116,11 +135,12 @@ class GeneralRepository: ObservableObject {
 
         do {
             let drawingEntities = try context.fetch(fetchRequest)
-            let drawings = drawingEntities.map { drawingEntity in
+            let drawings = drawingEntities.map { de in
                 Drawing(
-                    id: drawingEntity.id ?? UUID(),
-                    name: drawingEntity.name ?? "Без названия",
-                    filePath: drawingEntity.filePath
+                    id: de.id ?? UUID(),
+                    name: de.name ?? "Без названия",
+                    filePath: de.filePath,
+                    pdfData: de.pdfData 
                 )
             }
             self.drawings = drawings // Обновляем список чертежей

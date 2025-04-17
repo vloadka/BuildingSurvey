@@ -55,7 +55,13 @@ class AddDrawingViewModel: ObservableObject {
             try FileManager.default.copyItem(at: selectedPDF, to: destinationURL)
 
             // Добавление чертеж в репозиторий
-            repository.addDrawing(for: project, name: newFileName, filePath: destinationURL.path)
+            let pdfData = try Data(contentsOf: destinationURL)
+            repository.addDrawing(
+                    for: project,
+                    name: newFileName,
+                    filePath: destinationURL.path,
+                    pdfData: pdfData
+            )
             print("Сохраняем чертеж с именем: \(newFileName) в \(destinationURL.path)")
 
 

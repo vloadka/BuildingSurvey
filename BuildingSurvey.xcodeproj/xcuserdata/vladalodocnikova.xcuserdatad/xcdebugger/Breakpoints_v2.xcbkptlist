@@ -404,20 +404,6 @@
             landmarkType = "7">
             <Locations>
                <Location
-                  uuid = "4E5E9DE3-E2EF-4716-99D0-C0CB58B439AB - 4cbadce97523c03e"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "BuildingSurvey.ApiService.mimeType(for: Swift.String) -&gt; Swift.String"
-                  moduleName = "BuildingSurvey"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/vladalodocnikova/Desktop/diplom/BuildingSurvey/BuildingSurvey/di/ApiService.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "251"
-                  endingLineNumber = "251">
-               </Location>
-               <Location
                   uuid = "4E5E9DE3-E2EF-4716-99D0-C0CB58B439AB - 5b2e6da72c852a71"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
