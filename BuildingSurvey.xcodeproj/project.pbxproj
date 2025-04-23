@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FF008DEE2DB1898700F1C558 /* ScaleInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF008DED2DB1898700F1C558 /* ScaleInputView.swift */; };
 		FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF105B862CBEF780007E9C1E /* GeneralRepository.swift */; };
 		FF2BE6F42D8A179300ED8FB4 /* RectangleEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF2BE6F32D8A179300ED8FB4 /* RectangleEntity.swift */; };
 		FF83512D2D4F77FB002E64D2 /* PhotoLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF83512C2D4F77FB002E64D2 /* PhotoLoader.swift */; };
@@ -89,6 +90,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		FF008DED2DB1898700F1C558 /* ScaleInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaleInputView.swift; sourceTree = "<group>"; };
 		FF105B862CBEF780007E9C1E /* GeneralRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralRepository.swift; sourceTree = "<group>"; };
 		FF2BE6F32D8A179300ED8FB4 /* RectangleEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RectangleEntity.swift; sourceTree = "<group>"; };
 		FF83512C2D4F77FB002E64D2 /* PhotoLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLoader.swift; sourceTree = "<group>"; };
@@ -182,6 +184,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		FF008DEC2DB188D900F1C558 /* ScaleInput */ = {
+			isa = PBXGroup;
+			children = (
+				FF008DED2DB1898700F1C558 /* ScaleInputView.swift */,
+			);
+			path = ScaleInput;
+			sourceTree = "<group>";
+		};
 		FF105B852CBEF731007E9C1E /* Repositories */ = {
 			isa = PBXGroup;
 			children = (
@@ -253,6 +263,7 @@
 		FF994F7D2C9B55E10027A6D3 /* BuildingSurvey */ = {
 			isa = PBXGroup;
 			children = (
+				FF008DEC2DB188D900F1C558 /* ScaleInput */,
 				FFCFFCE22DAC084300584702 /* EmailConfirmation */,
 				FFCFFCDF2DAAB0BC00584702 /* datastore */,
 				FFCFFCD82DA2EC0100584702 /* di */,
@@ -574,6 +585,7 @@
 				FFFCDA6F2D78C34500681B3B /* DrawingView.swift in Sources */,
 				FFCFFCDE2DA2F12F00584702 /* SendRepository.swift in Sources */,
 				FF83513B2D5654AB002E64D2 /* ProjectModel.xcdatamodeld in Sources */,
+				FF008DEE2DB1898700F1C558 /* ScaleInputView.swift in Sources */,
 				FF86A19A2D8430C800FB9FD6 /* PolylineEntity.swift in Sources */,
 				FF105B872CBEF780007E9C1E /* GeneralRepository.swift in Sources */,
 				FFCFFCE12DAAB13900584702 /* DataStoreManager.swift in Sources */,

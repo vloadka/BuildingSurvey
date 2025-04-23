@@ -606,6 +606,233 @@ class SendRepository {
         }
     }
 
+    func addDrawingOnServer(
+      drawing: Drawing,
+      project: Project,
+      fileURL: URL
+    ) async -> DefaultResponse {
+      do {
+        let jwtCookie = await DataStoreManager.shared.getJwtToken()
+        let cookieHeader = "jwt=\(jwtCookie)"
+        let fileData = try Data(contentsOf: fileURL)
+        let fileName = fileURL.lastPathComponent
+          
+          print("[SendRepository.addDrawingOnServer] drawingId=\(drawing.id), project.servId=\(project.servId ?? -1), fileURL=\(fileURL.lastPathComponent)")
+              
+        let (idResponse, http) = try await apiService.addDrawing(
+          token: cookieHeader,
+          id: project.servId.map(String.init) ?? "",
+          name: drawing.name,
+          scale: drawing.scale,
+          fileData: fileData,
+          fileName: fileName
+        )
+          print("⬅️ [SendRepository.addDrawingOnServer] status=\(http.statusCode), returned id=\(idResponse.id)")
+              
+        let status = await handleResponse(http)
+        switch status {
+        case .success:
+        if let newServId = Int64(idResponse.id) {
+            generalRepository.updateDrawingServId(
+                drawingId: drawing.id,
+                servId: newServId
+            )
+        }
+        case .noSuchElement:
+          return .success
+        case .retry:
+          return await addDrawingOnServer(drawing: drawing, project: project, fileURL: fileURL)
+        case .internetError:
+          break
+        }
+          print("🔄 [SendRepository.addDrawingOnServer] handled status: \(status)")
+              
+        return status
+      } catch {
+        return .internetError
+      }
+    }
+
+
+        // MARK: — Обновление метаданных чертежа на сервере
+    func updateDrawingOnServer(drawing: Drawing) async -> DefaultResponse {
+        // Проверяем, есть ли у чертежа server‑ID проекта и самого чертежа
+        guard
+            let projectId = drawing.projectServId,
+            let planId    = drawing.planServId
+        else {
+            return .noSuchElement
+        }
+
+        do {
+            // Получаем JWT‑токен и формируем заголовок Cookie
+            let jwt    = await dataStoreManager.getJwtToken()
+            let cookie = "jwt=\(jwt)"
+
+            // Выполняем PUT‑запрос на обновление названия/масштаба
+            let (_, httpResponse) = try await apiService.updateDrawing(
+                token:  cookie,
+                id:     String(projectId),
+                planId: String(planId),
+                name:   drawing.name,
+                scale:  drawing.scale
+            )
+
+            // Обрабатываем код ответа
+            let result = await handleResponse(httpResponse)
+            switch result {
+            case .noSuchElement:
+                // Если на сервере такого чертежа нет — считаем, что обновление успешно
+                return .success
+            case .retry:
+                // При необходимости обновить токен и повторить
+                return await updateDrawingOnServer(drawing: drawing)
+            default:
+                return result
+            }
+
+        } catch {
+            return .internetError
+        }
+    }
+
+
+        // MARK: — Удаление чертежа на сервере
+    func deleteDrawingOnServer(drawing: Drawing) async -> DefaultResponse {
+            // Убедимся, что у чертежа есть и projectServId, и planServId
+            guard
+                let projectId = drawing.projectServId,
+                let planId    = drawing.planServId
+            else {
+                return .noSuchElement
+            }
+
+            do {
+                // Получаем актуальный JWT из хранилища
+                let jwt    = await dataStoreManager.getJwtToken()
+                let cookie = "jwt=\(jwt)"
+
+                // Выполняем DELETE запрос
+                let (_, httpResponse) = try await apiService.deleteDrawing(
+                    token: cookie,
+                    id: String(projectId),
+                    planId: String(planId)
+                )
+
+                // Обрабатываем код ответа
+                let result = await handleResponse(httpResponse)
+                switch result {
+                case .noSuchElement:
+                    // Если на сервере такого чертежа нет — считаем, что операция успешна
+                    return .success
+                case .retry:
+                    // В случае истёкшего токена или 401 пробуем снова
+                    return await deleteDrawingOnServer(drawing: drawing)
+                default:
+                    return result
+                }
+            } catch {
+                return .internetError
+            }
+        }
+
+        // MARK: — Загрузка списка чертежей из сервера
+    func getDrawingsFromServer(project: Project) async -> DefaultResponse {
+            // Проверим, что есть server‑ID проекта
+            guard let projectId = project.servId else {
+                print("❌ [SendRepository.getDrawingsFromServer] project.servId == nil")
+                return .noSuchElement
+            }
+
+        do {
+            let jwt    = await dataStoreManager.getJwtToken()
+            let cookie = "jwt=\(jwt)"
+            print("🚀 [SendRepository.getDrawingsFromServer] projectId=\(projectId)")
+            var page = 0
+            while true {
+                do {
+                    print("   🔄 запрос страницы \(page)")
+                    let (plansResponse, _) = try await apiService.getDrawings(
+                        token: cookie, id: String(projectId),
+                        pageNum: page, pageSize: 20
+                    )
+                    // сохраняем пришедшие планы
+                    for plan in plansResponse.content {
+                        generalRepository.addDrawing(
+                            for: project,
+                            name: plan.name,
+                            filePath: nil,
+                            pdfData: nil,
+                            servId: Int64(plan.id),
+                            scale: plan.scale
+                        )
+                    }
+                    // если это последняя страница — выходим
+                    if plansResponse.last {
+                        print("✅ все страницы загружены, всего \(page+1)")
+                        return .success
+                    }
+                    page += 1
+                } catch {
+                    // при ошибке одной из страниц — логируем и возвращаем успех
+                    print("⚠️ [getDrawingsFromServer] ошибка на странице \(page): \(error)")
+                    return .success
+                }
+            }
+        }
+        }
+
+    // MARK: — Скачивание файла чертежа
+    func downloadDrawingFile(project: Project, drawing: Drawing) async -> DefaultResponse {
+            // Проверим, что у нас есть server‑ID проекта и чертежа, а также директория
+            guard
+                let projectId = project.servId,
+                let planId    = drawing.planServId,
+                let outputDir = outputDir
+            else {
+                return .noSuchElement
+            }
+
+            do {
+                // Получаем JWT‑токен
+                let jwt    = await dataStoreManager.getJwtToken()
+                let cookie = "jwt=\(jwt)"
+
+                // Запрашиваем файл
+                let (data, httpResponse) = try await apiService.getDrawingFile(
+                    token: cookie,
+                    id:       String(projectId),
+                    planId:   String(planId)
+                )
+                let result = await handleResponse(httpResponse)
+
+                if result == .success {
+                    // Сохраняем PDF на диск
+                    let filename = "\(planId).pdf"
+                    let dst = outputDir.appendingPathComponent(filename)
+                    do {
+                        try data.write(to: dst)
+                        generalRepository.updateDrawingFilePath(
+                            drawingId: drawing.id,
+                            path:      dst.path
+                        )
+                    } catch {
+                        print("Ошибка при сохранении файла: \(error)")
+                        return .internetError
+                    }
+                }
+
+                // Если сервер вернул RETRY, пробуем ещё раз
+                if result == .retry {
+                    return await downloadDrawingFile(project: project, drawing: drawing)
+                }
+                return result
+
+            } catch {
+                return .internetError
+            }
+        }
+    
     
     // Функция для загрузки аудио проекта с сервера.
     func getAudioProject(project: ProjectOnServer) async -> (DefaultResponse, String) {

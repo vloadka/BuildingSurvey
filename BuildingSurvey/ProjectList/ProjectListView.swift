@@ -12,6 +12,12 @@ struct ProjectListView: View {
     @State private var showDeleteAlert: Bool = false // Флаг для отображения предупреждения
     @State private var projectToDelete: Project? = nil // Проект, который нужно удалить
     @State private var selectedProject: Project? = nil
+    
+    let sendRepository = SendRepository(
+            apiService: ApiService.shared,
+            generalRepository: GeneralRepository(),
+            customWorkManager: DummyCustomWorkManager()
+        )
         
     var body: some View {
         VStack {
@@ -42,10 +48,14 @@ struct ProjectListView: View {
             }
             
             List(viewModel.uiState.projects) { project in
-                ProjectRow(project: project, onDelete: {
-                    projectToDelete = project // Сохраняем проект, который нужно удалить
-                    showDeleteAlert = true // Показываем предупреждение
-                })
+                ProjectRow(
+                    project: project,
+                    onDelete: {
+                        projectToDelete = project
+                        showDeleteAlert = true
+                    },
+                    repository: viewModel.repository, sendRepository: sendRepository
+                )
                 .listRowInsets(EdgeInsets())
                 .background(Color.white)
                 .cornerRadius(10)
@@ -88,11 +98,15 @@ struct ProjectRow: View {
     let project: Project
     let onDelete: () -> Void
     @State private var isActive = false  // Для управления переходом
+    
+    let repository: GeneralRepository
+    let sendRepository: SendRepository
+
 
     var body: some View {
         VStack {
             NavigationLink(
-                destination: DrawingListView(project: project, repository: GeneralRepository()),
+                destination: DrawingListView(project: project, repository: GeneralRepository(), sendRepository: sendRepository),
                 isActive: $isActive
             ) {
                 EmptyView()

@@ -95,7 +95,9 @@ struct AudioData {
 }
 
 class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate, AVAudioRecorderDelegate {
-    // Исходные свойства
+    private let scale: Double
+    private let initialScale: CGFloat
+    private var zoomInitialized = false
     private let pdfURL: URL
     private let drawingId: UUID
     private let repository: GeneralRepository
@@ -166,11 +168,13 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     
     private let project: Project // или ProjectEntity, если вы работаете с сущностями Core Data
         
-        init(pdfURL: URL, drawingId: UUID, repository: GeneralRepository, project: Project) {
+        init(pdfURL: URL, drawingId: UUID, repository: GeneralRepository, project: Project, scale: Double) {
             self.pdfURL = pdfURL
             self.drawingId = drawingId
             self.repository = repository
             self.project = project
+            self.scale = scale
+            self.initialScale = CGFloat(scale)
             super.init(nibName: nil, bundle: nil)
         }
 
@@ -242,28 +246,27 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        
+
         let scrollSize = pdfScrollView.bounds.size
         let contentSize = pdfContentView.bounds.size
+
         if contentSize.width > 0 && contentSize.height > 0 {
-            let widthScale = scrollSize.width / contentSize.width
-            let heightScale = scrollSize.height / contentSize.height
-            let minScale = min(widthScale, heightScale)
-            pdfScrollView.minimumZoomScale = minScale
-            
-            // Задаём желаемый масштаб 60% (0.6),
-            // если сохранённого значения нет.
-            let defaultScale: CGFloat = 0.5
-            let initialScale: CGFloat
-            if let saved = UserDefaults.standard.value(forKey: zoomScaleKey) as? Float, saved > 0 {
-                initialScale = CGFloat(saved)
-            } else {
-                // Если defaultScale меньше минимального, принудительно используем minScale.
-                initialScale = defaultScale >= minScale ? defaultScale : minScale
-            }
-            pdfScrollView.zoomScale = initialScale
-        }
-        
+           let widthScale = scrollSize.width / contentSize.width
+           let heightScale = scrollSize.height / contentSize.height
+           let minScale = min(widthScale, heightScale)
+
+           let extraZoomOutFactor: CGFloat = 0.01
+           pdfScrollView.minimumZoomScale = minScale * extraZoomOutFactor
+           pdfScrollView.maximumZoomScale = 10.0
+
+           if !zoomInitialized {
+               let clamped = max(pdfScrollView.minimumZoomScale,
+                                 min(initialScale, pdfScrollView.maximumZoomScale))
+               pdfScrollView.setZoomScale(clamped, animated: false)
+               zoomInitialized = true
+           }
+       }
+
         if bottomPanel.subviews.count > 0 && pdfContentView.bounds.size != .zero {
             loadPhotoMarkers()
             loadPointMarkers()
@@ -346,10 +349,10 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         pdfScrollView = UIScrollView()
         pdfScrollView.translatesAutoresizingMaskIntoConstraints = false
         pdfScrollView.delegate = self
-        pdfScrollView.maximumZoomScale = 4.0
-        pdfScrollView.minimumZoomScale = 1.0
+        pdfScrollView.maximumZoomScale = 10.0
+        pdfScrollView.minimumZoomScale = 0.01
         let savedZoom = UserDefaults.standard.float(forKey: zoomScaleKey)
-        pdfScrollView.zoomScale = savedZoom > 0 ? CGFloat(savedZoom) : 1.0
+        pdfScrollView.zoomScale = savedZoom > 0 ? CGFloat(savedZoom) : initialScale
         view.addSubview(pdfScrollView)
         
         NSLayoutConstraint.activate([
@@ -548,9 +551,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func loadSavedLines() {
-        let savedLines = repository.loadLines(for: drawingId)  // [LineData]
+        let savedLines = repository.loadLines(for: drawingId)
         
-        // Опционально: обновляем текущий цвет линии DrawingView, если это нужно
         if let firstLine = savedLines.first {
             drawingView.currentLineColor = firstLine.color
         }
@@ -873,8 +875,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             saveButton.heightAnchor.constraint(equalToConstant: 30),
             closeButton.widthAnchor.constraint(equalToConstant: 30),
             closeButton.heightAnchor.constraint(equalToConstant: 30),
-            
-            // Размещение кнопок по центру панели
+
             cancelButton.centerYAnchor.constraint(equalTo: polylineControlPanel!.centerYAnchor),
             saveButton.centerYAnchor.constraint(equalTo: polylineControlPanel!.centerYAnchor),
             closeButton.centerYAnchor.constraint(equalTo: polylineControlPanel!.centerYAnchor),
@@ -888,7 +889,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     private func hidePolylineControlPanel() {
         polylineControlPanel?.removeFromSuperview()
         polylineControlPanel = nil
-        // Восстанавливаем видимость исходных кнопок нижней панели
         for subview in bottomPanel.subviews {
             subview.isHidden = false
         }
@@ -922,13 +922,13 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         cancelCurrentPolyline()
         hidePolylineControlPanel()
         disablePolylineMode()
-        loadPolylineMarkers() // Обновляем отображение
+        loadPolylineMarkers()
         enableAllCreationButtons()
     }
     
     @objc private func closePolylineAction() {
         guard let polylineId = currentPolylineId, let first = currentPolylinePoints.first else { return }
-        currentPolylinePoints.append(first) // Замыкаем полилинию
+        currentPolylinePoints.append(first)
         updatePolylineLayer()
         repository.savePolyline(forDrawing: drawingId, polylineId: polylineId, points: currentPolylinePoints, closed: true, layer: activeLayer)
         cancelCurrentPolyline()
@@ -951,15 +951,12 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
                   let text = alert.textFields?.first?.text,
                   !text.isEmpty else { return }
             
-            // Вычисляем нормализованные координаты
             let normalizedX = location.x / self.pdfContentView.bounds.width
             let normalizedY = location.y / self.pdfContentView.bounds.height
             let normalizedPoint = CGPoint(x: normalizedX, y: normalizedY)
-            
-            // Сохраняем текст в репозитории
+
             self.repository.saveText(forDrawing: self.drawingId, text: text, coordinate: normalizedPoint, layer: self.activeLayer)
             
-            // Обновляем отображение, чтобы загрузить метки из репозитория
             self.updateDrawingView()
         }))
         present(alert, animated: true, completion: nil)
@@ -989,7 +986,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
                 
                 switch self.currentPhotoOperation {
                 case .none:
-                    // Новый маркер – сохраняем фото как основное
                     self.repository.savePhotoMarker(forDrawing: self.drawingId,
                                                     withId: markerId,
                                                     image: image,
@@ -1196,13 +1192,11 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func reloadPhotoMarkersUI() {
-        // Удаляем все фото-маркеры из основного представления
         pdfImageView.subviews.forEach { subview in
             if subview is PhotoMarkerButton {
                 subview.removeFromSuperview()
             }
         }
-        // Заново загружаем фото-маркеры из репозитория (они уже не содержат удалённого маркера)
         loadPhotoMarkers()
     }
     
@@ -1421,14 +1415,13 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             }
         }
         
-        updateDrawingView() // Обновляем интерфейс
+        updateDrawingView()
         hideLayerDropdown()
         showLayerDropdown()
     }
 
 
     func updateDrawingView() {
-        // Удаляем все CAShapeLayer из pdfContentView.layer
         pdfContentView.layer.sublayers?.forEach { layer in
             if layer is CAShapeLayer {
                 layer.removeFromSuperlayer()
@@ -1440,10 +1433,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             subview.removeFromSuperview()
         }
         
-        // Очищаем сохранённые линии в DrawingView (если они хранятся в массиве)
         drawingView.loadLines([])
-        
-        // Заново загружаем объекты из репозитория – линии, полилинии, точки, тексты, прямоугольники
+    
         loadSavedLines()
         loadPolylineMarkers()
         loadPointMarkers()
@@ -1466,7 +1457,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         present(addLayerVC, animated: true, completion: nil)
     }
     
-    // Метод для переключения режима рисования прямоугольника:
     @objc private func toggleRectangleMode(_ sender: UIButton) {
         if !rectangleModeEnabled {
             rectangleModeEnabled = true
@@ -1489,13 +1479,10 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
     }
     
-    // Обработчик нажатий для рисования прямоугольника:
     @objc private func handleRectangleTap(_ sender: UITapGestureRecognizer) {
         let location = sender.location(in: pdfContentView)
         if rectangleFirstPoint == nil {
-            // Сохраняем первую точку как верхний левый угол
             rectangleFirstPoint = location
-            // (опционально можно отобразить маркер первой точки)
         } else {
             guard let first = rectangleFirstPoint else { return }
             // Определяем координаты так, чтобы первая точка была верхним левым углом, а вторая – нижним правым
@@ -1505,7 +1492,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             let height = abs(first.y - location.y)
             let rect = CGRect(x: x, y: y, width: width, height: height)
             
-            // Удаляем временный слой (если был)
             rectangleLayer?.removeFromSuperlayer()
             
             // Рисуем окончательный прямоугольник
@@ -1513,25 +1499,20 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             let strokeColor = activeLayer?.color.cgColor ?? UIColor.red.cgColor
             layer.strokeColor = strokeColor
             layer.lineWidth = 2.0
-            layer.fillColor = UIColor.clear.cgColor  // прозрачное заполнение
+            layer.fillColor = UIColor.clear.cgColor
             let path = UIBezierPath(rect: rect)
             layer.path = path.cgPath
             pdfContentView.layer.addSublayer(layer)
-            // Если требуется, можно сохранить ссылку на слой, но в данном случае необязательно
             
-            // Сохраняем прямоугольник в базу данных
             repository.saveRectangle(forDrawing: drawingId, rect: rect, layer: activeLayer)
             
             // Сбрасываем первую точку, чтобы можно было начать новый прямоугольник
             rectangleFirstPoint = nil
-            // Важно: не отключаем режим прямоугольника – другие кнопки остаются заблокированными,
-            // а пользователь может продолжать создавать прямоугольники.
         }
     }
 
     
     private func loadRectangleMarkers() {
-        // Опционально: удаляем ранее добавленные слои прямоугольников
         if let sublayers = pdfContentView.layer.sublayers {
             for layer in sublayers {
                 if let shapeLayer = layer as? CAShapeLayer,
@@ -1742,13 +1723,10 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     }
     
     private func getDrawingName(for drawingId: UUID) -> String {
-        // Загружаем все чертежи для текущего проекта
         let drawings = repository.loadDrawings(for: project)
-        // Ищем чертёж по идентификатору
         if let drawing = drawings.first(where: { $0.id == drawingId }) {
             return drawing.name
         }
-        // Если чертёж не найден, возвращаем значение по умолчанию
         return "Drawing"
     }
     
@@ -1823,7 +1801,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         recordingStatusLabel?.textColor = .white
         recordingStatusLabel?.textAlignment = .center
         
-        // Если есть представленный контроллер, добавляем уведомление в его view, иначе в self.view
         guard let containerView = self.presentedViewController?.view ?? self.view else { return }
         
         containerView.addSubview(recordingStatusLabel!)
@@ -1860,17 +1837,14 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             print("Ошибка выборки аудио: \(error)")
         }
     }
-    
-    // Новый метод в PDFViewController для показа фото-маркера с несколькими фото через свайп.
+   
     private func presentPhoto(forMarker marker: PhotoMarkerButton) {
         guard let markerId = marker.photoEntityId else {
             print("Маркер не имеет photoEntityId")
             return
         }
-        // Сохраняем выбранный маркер для последующих операций (retake, add, delete)
         self.currentViewingMarker = marker
         
-        // Загружаем все фото (основное и дополнительные) для данного маркера
         let photos = repository.loadPhotosForMarker(withId: markerId)
         if photos.isEmpty {
             print("Нет фото для маркера \(markerId)")
@@ -1986,7 +1960,6 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             sender.setImage(UIImage(named: "audio_start"), for: .normal)
             stopAudioRecording()
             showRecordingStatus(with: "Запись сохранена")
-            // Сохраняем аудиозапись в базу
             if let audioData = try? Data(contentsOf: recordingURL) {
                 let drawingName = getDrawingName(for: drawingId)
                 repository.saveAudio(forProject: project, audioData: audioData, timestamp: Date(), drawingName: drawingName)

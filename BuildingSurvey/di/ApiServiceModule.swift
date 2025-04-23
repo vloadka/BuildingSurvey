@@ -16,8 +16,8 @@ private let resourceTimeout: TimeInterval = 60
 class ApiServiceModule {
     static let shared = ApiServiceModule()
     
-//    private let baseURL = URL(string: "http://192.168.0.189:8080")!
-    let baseURL = URL(string: "http://127.0.0.1:8080")!
+    private let baseURL = URL(string: "http://192.168.0.190:8080")!
+    //let baseURL = URL(string: "http://127.0.0.1:8080")!
     private let session: URLSession
     
     private init() {

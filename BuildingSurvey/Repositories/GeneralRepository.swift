@@ -72,7 +72,7 @@ class GeneralRepository: ObservableObject {
         }
     }
 
-    func addDrawing(for project: Project, name: String, filePath: String?, pdfData: Data?) {
+    func addDrawing(for project: Project, name: String, filePath: String?, pdfData: Data?, servId: Int64?, scale: Double?) {
         let fetchRequest: NSFetchRequest<ProjectEntity> = ProjectEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", project.id as CVarArg)
 
@@ -84,6 +84,8 @@ class GeneralRepository: ObservableObject {
                 newDrawing.filePath = filePath
                 newDrawing.pdfData = pdfData
                 newDrawing.project = projectEntity
+                if let s = servId { newDrawing.servId = s }
+                if let sc = scale { newDrawing.scale = sc }
 
                 context.insert(newDrawing)
                 saveContext()
@@ -94,6 +96,7 @@ class GeneralRepository: ObservableObject {
                 print("    • name:        '\(newDrawing.name ?? "")'")
                 print("    • filePath:    '\(newDrawing.filePath ?? "nil")'")
                 print("    • pdfDataSize: \(newDrawing.pdfData?.count ?? 0) bytes")
+                print("👣 [GeneralRepository.addDrawing] вызван для project.id=\(project.id), servId=\(servId ?? -1), scale=\(scale ?? -1)")
                 
                 // ——— ЛОГ: выводим всю базу чертежей ———
                 let fetchAll: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
@@ -140,7 +143,10 @@ class GeneralRepository: ObservableObject {
                     id: de.id ?? UUID(),
                     name: de.name ?? "Без названия",
                     filePath: de.filePath,
-                    pdfData: de.pdfData 
+                    pdfData: de.pdfData,
+                    scale: de.scale,
+                    planServId: de.servId,
+                    projectServId: de.project?.servId
                 )
             }
             self.drawings = drawings // Обновляем список чертежей
@@ -381,7 +387,7 @@ class GeneralRepository: ObservableObject {
         do {
             if let drawing = try context.fetch(fetchRequest).first {
                 let pointEntity = PointEntity(context: context)
-                let id = UUID()  // Генерируем UUID здесь
+                let id = UUID()
                 pointEntity.id = id
                 pointEntity.coordinateX = coordinate.x
                 pointEntity.coordinateY = coordinate.y
@@ -389,8 +395,12 @@ class GeneralRepository: ObservableObject {
                 if let layerData = layer, let layerEntity = getLayerEntity(withId: layerData.id) {
                     pointEntity.layer = layerEntity
                 }
+
+                // Добавим вывод координат в консоль
+                print("Сохраняем точку: ID=\(id), X=\(coordinate.x), Y=\(coordinate.y)")
+
                 saveContext()
-                return id  // Возвращаем сгенерированный UUID
+                return id
             } else {
                 print("Ошибка: Чертеж с id \(drawingId) не найден.")
                 return nil
@@ -400,6 +410,7 @@ class GeneralRepository: ObservableObject {
             return nil
         }
     }
+
 
     func loadPoints(forDrawing drawingId: UUID) -> [PointData] {
         let fetchRequest: NSFetchRequest<PointEntity> = PointEntity.fetchRequest()
@@ -792,6 +803,43 @@ class GeneralRepository: ObservableObject {
             print("Фото-маркер с id \(markerId) содержит дополнительное фото. Всего фото: \(photos.count)")
         } else {
             print("Фото-маркер с id \(markerId) не имеет дополнительного фото.")
+        }
+    }
+    
+    func updateDrawingScale(drawingId: UUID, scale: Double) {
+        let req: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+        req.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+        do {
+          if let entity = try context.fetch(req).first {
+            entity.scale = scale
+            saveContext()
+          }
+        } catch {
+          print("Ошибка при сохранении масштаба: \(error)")
+        }
+      }
+    
+    // Обновление сервера‑ID после загрузки
+    func updateDrawingServId(drawingId: UUID, servId: Int64) {
+        let req: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+        req.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+        do {
+            if let entity = try context.fetch(req).first {
+                entity.servId = servId
+                saveContext()
+            }
+        } catch {
+            print("Ошибка при сохранении servId: \(error)")
+        }
+    }
+
+    // Обновление пути к файлу после скачивания
+    func updateDrawingFilePath(drawingId: UUID, path: String) {
+        let req: NSFetchRequest<DrawingEntity> = DrawingEntity.fetchRequest()
+        req.predicate = NSPredicate(format: "id == %@", drawingId as CVarArg)
+        if let entity = (try? context.fetch(req))?.first {
+            entity.filePath = path
+            saveContext()
         }
     }
 

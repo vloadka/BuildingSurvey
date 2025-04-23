@@ -12,4 +12,7 @@ struct Drawing: Identifiable, Hashable {
     var name: String
     var filePath: String?
     var pdfData: Data?
+    var scale: Double?
+    var planServId: Int64?
+    var projectServId: Int64?
 }

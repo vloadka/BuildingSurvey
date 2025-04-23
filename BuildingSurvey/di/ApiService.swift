@@ -98,10 +98,32 @@ struct Verified: Codable {
     let verified: Bool
 }
 
+struct PlanOnServer: Codable {
+    let id: Int64
+    let name: String
+    let scale: Double?
+}
+
+struct PlansResponse: Codable {
+    let content: [PlanOnServer]
+    let last: Bool
+    
+    enum CodingKeys: String, CodingKey {
+        case content = "plans"
+        case last
+    }
+    
+    init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.content = try c.decode([PlanOnServer].self, forKey: .content)
+            self.last = try c.decodeIfPresent(Bool.self, forKey: .last) ?? true
+        }
+}
+
 class ApiService {
     static let shared = ApiService()
-//    let baseURL = URL(string: "http://192.168.0.189:8080")!
-    let baseURL = URL(string: "http://127.0.0.1:8080")!
+    let baseURL = URL(string: "http://192.168.0.190:8080")!
+    //let baseURL = URL(string: "http://127.0.0.1:8080")!
     private let session: URLSession
     
     private init() {
@@ -328,7 +350,8 @@ class ApiService {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
         var body = Data()
-        let mimeType = "image/jpeg"
+//        let mimeType = "image/jpeg"
+        let mimeType = "application/pdf"
         
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
@@ -339,11 +362,35 @@ class ApiService {
         
         request.httpBody = body
         
+        print("[ApiService.addDrawing] POST /inspections/\(id)/plans name=\(name) scale=\(String(describing: scale)) fileName=\(fileName)")
+            
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
         let decoded = try JSONDecoder().decode(IdResponse.self, from: data)
+        print("[ApiService.addDrawing] decoded id: \(decoded.id)")
+        return (decoded, httpResponse)
+    }
+    
+    // GET /api/v1/inspections/{id}/plans?pageNum=&pageSize=
+    func getDrawings(token: String, id: String, pageNum: Int, pageSize: Int) async throws -> (PlansResponse, HTTPURLResponse) {
+        var components = URLComponents(url: baseURL.appendingPathComponent("/api/v1/inspections/\(id)/plans"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "pageNum", value: "\(pageNum)"),
+            URLQueryItem(name: "pageSize", value: "\(pageSize)")
+        ]
+        guard let url = components.url else { throw URLError(.badURL) }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(token, forHTTPHeaderField: "Cookie")
+
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        print("DEBUG [getDrawings] body: \(String(data: data, encoding: .utf8) ?? "<‑не удалось прочитать>")")
+        let decoded = try JSONDecoder().decode(PlansResponse.self, from: data)
         return (decoded, httpResponse)
     }
     
@@ -385,6 +432,37 @@ class ApiService {
         return (data, httpResponse)
     }
 
+    // GET /api/v1/inspections/{id}/plans/{planId}/file
+    func getDrawingFile(token: String, id: String, planId: String) async throws -> (Data, HTTPURLResponse) {
+        let url = baseURL.appendingPathComponent("/api/v1/inspections/\(id)/plans/\(planId)/file")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(token, forHTTPHeaderField: "Cookie")
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        return (data, httpResponse)
+    }
+    
+//    // GET /api/v1/inspections/{id}/plans/{planId}/file (или просто /plans/{planId})
+//    func downloadDrawing(
+//      token: String,
+//      projectId: String,
+//      planId: String
+//    ) async throws -> (Data, HTTPURLResponse) {
+//        let url = baseURL
+//          .appendingPathComponent("/api/v1/inspections/\(projectId)/plans/\(planId)")
+//        var request = URLRequest(url: url)
+//        request.httpMethod = "GET"
+//        request.setValue(token, forHTTPHeaderField: "Cookie")
+//        let (data, response) = try await session.data(for: request)
+//        guard let http = response as? HTTPURLResponse else {
+//          throw URLError(.badServerResponse)
+//        }
+//        return (data, http)
+//    }
+    
     // POST /api/v1/inspections/{id}/type-defect
     func addTypeOfDefect(token: String, id: String, typeOfDefectBody: TypeOfDefectBody) async throws -> (UuidResponse, HTTPURLResponse) {
         let url = baseURL.appendingPathComponent("/api/v1/inspections/\(id)/type-defect")

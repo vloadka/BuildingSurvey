@@ -13,8 +13,9 @@ public class DrawingEntity: NSManagedObject {
     @NSManaged public var name: String?
     @NSManaged public var filePath: String?
     @NSManaged public var pdfData: Data?
+    @NSManaged public var scale: Double
+    @NSManaged public var servId: Int64
     @NSManaged public var project: ProjectEntity?
-    
 
     public func copy(with zone: NSZone? = nil) -> Any {
         let copy = DrawingEntity(context: self.managedObjectContext!)

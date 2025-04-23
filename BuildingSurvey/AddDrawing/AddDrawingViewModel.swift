@@ -14,12 +14,15 @@ class AddDrawingViewModel: ObservableObject {
     @Published var isDocumentPickerPresented: Bool = false
     
     private let repository: GeneralRepository
+    private let sendRepository: SendRepository
     
-    init(repository: GeneralRepository) {
-        self.repository = repository
-    }
+    init(generalRepository: GeneralRepository, sendRepository: SendRepository) {
+            self.repository = generalRepository
+            self.sendRepository = sendRepository
+        }
 
     func saveDrawing(for project: Project, completion: @escaping () -> Void) {
+        print("🚀 [AddDrawingViewModel.saveDrawing] name='\(drawingName)', selectedPDF='\(String(describing: selectedPDF))'")
         guard !drawingName.isEmpty else {
             showError = true
             print("Имя чертежа не может быть пустым.")
@@ -60,8 +63,35 @@ class AddDrawingViewModel: ObservableObject {
                     for: project,
                     name: newFileName,
                     filePath: destinationURL.path,
-                    pdfData: pdfData
-            )
+                    pdfData: pdfData,
+                    servId: nil,
+                    scale: nil
+                )
+                print("✅ Локально сохранено: \(newFileName)")
+            
+            let fileNameSnapshot = newFileName
+            let fileURLSnapshot  = destinationURL
+            let pdfDataSnapshot  = pdfData
+            let projectServIdOpt  = project.servId
+            
+            Task {
+                let drawing = Drawing(
+                    id: UUID(),           // или лучше взять тот же UUID, что создал CoreData
+                    name: fileNameSnapshot,
+                    filePath: fileURLSnapshot.path,
+                    pdfData: pdfDataSnapshot,
+                    scale: nil,
+                    planServId: nil,
+                    projectServId: project.servId.map { Int64($0) }
+                )
+                let result = await sendRepository.addDrawingOnServer(
+                    drawing: drawing,
+                    project: project,
+                    fileURL: fileURLSnapshot
+                )
+                print("⬅️ [AddDrawingViewModel] Результат отправки на сервер: \(result)")
+            }
+
             print("Сохраняем чертеж с именем: \(newFileName) в \(destinationURL.path)")
 
 

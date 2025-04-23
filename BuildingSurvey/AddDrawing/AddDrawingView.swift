@@ -14,13 +14,15 @@ struct AddDrawingView: View {
     
     let project: Project
     let repository: GeneralRepository
+    let sendRepository: SendRepository
     var onDrawingAdded: () -> Void
     
-    init(project: Project, repository: GeneralRepository, onDrawingAdded: @escaping () -> Void) {
+    init(project: Project, repository: GeneralRepository, sendRepository: SendRepository, onDrawingAdded: @escaping () -> Void) {
         self.project = project
         self.repository = repository
+        self.sendRepository = sendRepository
         self.onDrawingAdded = onDrawingAdded
-        _viewModel = StateObject(wrappedValue: AddDrawingViewModel(repository: repository))
+        _viewModel = StateObject(wrappedValue: AddDrawingViewModel(generalRepository: repository, sendRepository: sendRepository))
     }
 
     var body: some View {
