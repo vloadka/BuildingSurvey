@@ -62,8 +62,8 @@
             filePath = "BuildingSurvey/di/ApiService.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "564"
-            endingLineNumber = "564"
+            startingLineNumber = "571"
+            endingLineNumber = "571"
             landmarkName = "ApiService"
             landmarkType = "3">
          </BreakpointContent>
@@ -78,8 +78,8 @@
             filePath = "BuildingSurvey/di/ApiService.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "649"
-            endingLineNumber = "649"
+            startingLineNumber = "656"
+            endingLineNumber = "656"
             landmarkName = "getProjectPhoto(token:id:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -94,8 +94,8 @@
             filePath = "BuildingSurvey/di/ApiService.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "583"
-            endingLineNumber = "583"
+            startingLineNumber = "590"
+            endingLineNumber = "590"
             landmarkName = "ApiService"
             landmarkType = "3">
          </BreakpointContent>
@@ -238,8 +238,8 @@
             filePath = "BuildingSurvey/di/ApiService.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "582"
-            endingLineNumber = "582"
+            startingLineNumber = "589"
+            endingLineNumber = "589"
             landmarkName = "ApiService"
             landmarkType = "3">
          </BreakpointContent>
@@ -254,8 +254,8 @@
             filePath = "BuildingSurvey/di/ApiService.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "607"
-            endingLineNumber = "607"
+            startingLineNumber = "614"
+            endingLineNumber = "614"
             landmarkName = "ApiService"
             landmarkType = "3">
          </BreakpointContent>
@@ -270,8 +270,8 @@
             filePath = "BuildingSurvey/di/ApiService.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "608"
-            endingLineNumber = "608"
+            startingLineNumber = "615"
+            endingLineNumber = "615"
             landmarkName = "ApiService"
             landmarkType = "3">
          </BreakpointContent>
@@ -286,8 +286,8 @@
             filePath = "BuildingSurvey/di/ApiService.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "591"
-            endingLineNumber = "591"
+            startingLineNumber = "598"
+            endingLineNumber = "598"
             landmarkName = "ApiService"
             landmarkType = "3">
          </BreakpointContent>
@@ -302,8 +302,8 @@
             filePath = "BuildingSurvey/di/ApiService.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "592"
-            endingLineNumber = "592"
+            startingLineNumber = "599"
+            endingLineNumber = "599"
             landmarkName = "ApiService"
             landmarkType = "3">
          </BreakpointContent>
@@ -446,9 +446,87 @@
             filePath = "BuildingSurvey/di/SendRepository.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "786"
-            endingLineNumber = "786"
+            startingLineNumber = "789"
+            endingLineNumber = "789"
             landmarkName = "downloadDrawingFile(project:drawing:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "C146FA00-EC81-4FE8-A5D1-C77CECB9C355"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "BuildingSurvey/bd/DrawingEntity.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "16"
+            endingLineNumber = "16"
+            landmarkName = "DrawingEntity"
+            landmarkType = "3">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "328185E9-1B27-4278-B73F-A14155D01EAD"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "BuildingSurvey/di/SendRepository.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "658"
+            endingLineNumber = "658"
+            landmarkName = "updateDrawingOnServer(drawing:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "328185E9-1B27-4278-B73F-A14155D01EAD - 21e242f5c8f8804c"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "BuildingSurvey.SendRepository.updateDrawingOnServer(drawing: BuildingSurvey.Drawing) async -&gt; BuildingSurvey.DefaultResponse"
+                  moduleName = "BuildingSurvey"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/vladalodocnikova/Desktop/diplom/BuildingSurvey/BuildingSurvey/di/SendRepository.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "658"
+                  endingLineNumber = "658">
+               </Location>
+               <Location
+                  uuid = "328185E9-1B27-4278-B73F-A14155D01EAD - f630d5cf9998ff67"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(1) suspend resume partial function for BuildingSurvey.SendRepository.updateDrawingOnServer(drawing: BuildingSurvey.Drawing) async -&gt; BuildingSurvey.DefaultResponse"
+                  moduleName = "BuildingSurvey"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/vladalodocnikova/Desktop/diplom/BuildingSurvey/BuildingSurvey/di/SendRepository.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "658"
+                  endingLineNumber = "658">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "3B6581E6-09D8-4838-97C3-3C9D7D1D61A3"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "BuildingSurvey/di/ApiService.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "423"
+            endingLineNumber = "423"
+            landmarkName = "updateDrawing(token:id:planId:name:scale:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

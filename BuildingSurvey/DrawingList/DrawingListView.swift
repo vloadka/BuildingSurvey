@@ -18,14 +18,12 @@ struct DrawingListView: View {
     let repository: GeneralRepository
     let sendRepository: SendRepository
 
-    // существующие стейты
     @State private var isAddingDrawing = false
     @State private var showAlert = false
     @State private var drawingToDelete: Drawing? = nil
     @State private var selectedDrawing: Drawing? = nil
     @State private var selectedTab: FileTab = .drawings
 
-    // новые стейты для масштаба
     @State private var showScaleInput = false
     @State private var scaleText = "1:100"
     @State private var navigateToPDF = false
@@ -81,10 +79,30 @@ struct DrawingListView: View {
                             }
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                // сначала сохраняем выбранный чертёж, показываем диалог масштаба
-                                selectedDrawing = drawing
-                                scaleText = "1:100" // или можно вытянуть из drawing.scale, если уже был
+                                   selectedDrawing = drawing
+                                  // Если масштаб уже ненулевой — сразу открываем PDF
+                                if let s = drawing.scale, s > 0 {
+                                    Task {
+                                        do {
+                                            // 1) скачиваем или находим локальный файл
+                                            let fileURL = try await viewModel.prepareDrawingFile(drawing)
+                                            // 2) обновляем selectedDrawing, чтобы PDFViewer получил корректный путь
+                                            await MainActor.run {
+                                                selectedDrawing?.filePath = fileURL.path
+                                                // скрываем input (на случай если он был открыт)
+                                                showScaleInput = false
+                                                // 3) переходим в PDFViewer
+                                                navigateToPDF = true
+                                            }
+                                        } catch {
+                                            print("Не удалось загрузить чертёж:", error)
+                                        }
+                                    }
+                                } else {
+                                // Первый раз — предлагаем ввести
+                                scaleText = "1:100"
                                 showScaleInput = true
+                                }
                             }
                         }
                     }
@@ -141,7 +159,7 @@ struct DrawingListView: View {
                         drawingId: selectedDrawing?.id ?? UUID(),
                         repository: viewModel.repository,
                         project: project,
-                        scale: selectedDrawing?.scale ?? 1.0
+                        scale: 1.0
                     )
                     .navigationTitle(selectedDrawing?.name ?? ""),
                 isActive: $navigateToPDF
@@ -151,37 +169,44 @@ struct DrawingListView: View {
         )
         // Sheet для ввода масштаба
         .sheet(isPresented: $showScaleInput) {
-          ScaleInputView(isPresented: $showScaleInput, text: $scaleText) { input in
-            // Разбиваем и валидируем ввод десятков
-            let parts = input.split(separator: ":").map(String.init)
-            guard parts.count == 2,
-                  let a = Double(parts[0]), a > 0,
-                  let b = Double(parts[1]), b > 0,
-                  let drawing = selectedDrawing
-            else { return }
+            ScaleInputView(isPresented: $showScaleInput, text: $scaleText) { input in
+                // 1) валидируем и вычисляем
+                let parts = input.split(separator: ":").map(String.init)
+                guard parts.count == 2,
+                      let a = Double(parts[0]), let b = Double(parts[1]),
+                      var drawing = selectedDrawing
+                else { return }
 
-            let resultScale = a / b
+                let resultScale = a / b
 
-            // 1) Сохраняем новый масштаб в Core Data и в локальной модели
-            viewModel.repository.updateDrawingScale(drawingId: drawing.id, scale: resultScale)
-            selectedDrawing?.scale = resultScale
+                // 2) локально сохраняем в CoreData
+                viewModel.repository.updateDrawingScale(drawingId: drawing.id, scale: resultScale)
+                // обновляем struct для отправки
+                drawing.scale = resultScale
+                selectedDrawing?.scale = resultScale
 
-            // 2) Асинхронно скачиваем PDF и сохраняем путь
-            Task {
-              do {
-                let fileURL = try await viewModel.prepareDrawingFile(drawing)
-                selectedDrawing?.filePath = fileURL.path
+                Task {
+                    // 3) отправляем НА СЕРВЕР уже обновлённый Drawing
+                    let serverResult = await viewModel.sendRepository.updateDrawingOnServer(drawing: drawing)
+                    if serverResult != .success {
+                        print("❗️Ошибка отправки масштаба: \(serverResult)")
+                    }
 
-                // 3) Переключаемся на экран просмотра уже из MainActor
-                await MainActor.run {
-                    showScaleInput = false
-                    navigateToPDF = true
+                    // 4) открываем PDF
+                    do {
+                        let fileURL = try await viewModel.prepareDrawingFile(drawing)
+                        await MainActor.run {
+                            selectedDrawing?.filePath = fileURL.path
+                            // скрываем input (на случай если он был открыт)
+                            showScaleInput = false
+                            // 3) переходим в PDFViewer
+                            navigateToPDF = true
+                        }
+                    } catch {
+                        print("Не удалось загрузить чертёж:", error)
+                    }
                 }
-              } catch {
-                // здесь можно показать Alert об ошибке
-                print("Не удалось загрузить чертёж:", error.localizedDescription)
-              }
-            }
+
           }
         }
     }

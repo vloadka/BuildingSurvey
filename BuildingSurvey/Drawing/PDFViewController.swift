@@ -159,6 +159,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
     var audioRecorder: AVAudioRecorder?
     var recordingStatusLabel: UILabel?
     var currentRetakePhotoId: UUID?
+    
+    private var linesLoaded = false
 
     
     // Ключ для сохранения зума
@@ -219,6 +221,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             guard let self = self else { return }
             // Генерируем уникальный идентификатор для линии
             let lineId = UUID()
+            print("Line - start = \(start), end = \(end)")
             // Сохраняем линию с внешним идентификатором
             self.repository.saveLine(forDrawing: self.drawingId, lineId: lineId, start: start, end: end, layer: self.activeLayer)
             
@@ -239,7 +242,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         }
         
         // Загрузка сохранённых линий, которые уже добавлены в слой
-        loadSavedLines()
+//        loadSavedLines()
         
         // Загрузка фото-маркеров, точек, полилиний и текстовых меток происходит в viewDidLayoutSubviews, когда установлены размеры
     }
@@ -266,6 +269,13 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
                zoomInitialized = true
            }
        }
+        
+        // ── ЗАГРУЗКА ЛИНИЙ ПОСЛЕ ЛЭЙАУТА ──
+        if !linesLoaded && pdfContentView.bounds.size != .zero {
+            print("🗒 loadSavedLines(): bounds = \(pdfContentView.bounds.size)")
+            loadSavedLines()
+            linesLoaded = true
+        }
 
         if bottomPanel.subviews.count > 0 && pdfContentView.bounds.size != .zero {
             loadPhotoMarkers()
@@ -562,10 +572,14 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             lineLayer.strokeColor = lineData.color.cgColor
             lineLayer.lineWidth = 2.0
             lineLayer.fillColor = UIColor.clear.cgColor
+            let absStart = lineData.start
+            let absEnd   = lineData.end
+            print("id линии \(lineData.id):")
+            print("LoadLine - start = \(absStart), end = \(absEnd)")
             
             let path = UIBezierPath()
-            path.move(to: lineData.start)
-            path.addLine(to: lineData.end)
+            path.move(to: absStart)
+            path.addLine(to: absEnd)
             lineLayer.path = path.cgPath
             
             // Устанавливаем идентификатор линии для возможности удаления ластиком
@@ -583,6 +597,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             shapeLayer.strokeColor = polylineData.color.cgColor
             shapeLayer.lineWidth = 2.0
             shapeLayer.fillColor = UIColor.clear.cgColor
+            print("LoadPolyLine = \(polylineData.points)")
             let path = UIBezierPath()
             if let first = polylineData.points.first {
                 path.move(to: first)
@@ -617,9 +632,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             label.textColor = textData.color
             label.backgroundColor = .clear
             label.sizeToFit()
-            let centerX = textData.coordinate.x * pdfContentView.bounds.width
-            let centerY = textData.coordinate.y * pdfContentView.bounds.height
-            label.center = CGPoint(x: centerX, y: centerY)
+            print("LoadText = \(textData.coordinate)")
+            label.center = textData.coordinate
             // Устанавливаем уникальный идентификатор для метки
             label.accessibilityIdentifier = textData.id.uuidString
             pdfImageView.addSubview(label)
@@ -751,9 +765,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         pdfImageView.addSubview(markerButton)
         pdfImageView.bringSubviewToFront(markerButton)
         
-        let normalizedX = locationInView.x / pdfContentView.bounds.width
-        let normalizedY = locationInView.y / pdfContentView.bounds.height
-        markerButton.normalizedCoordinate = CGPoint(x: normalizedX, y: normalizedY)
+        markerButton.normalizedCoordinate = locationInView
         
         // если идентификатор ещё не задан, генерируем его
             if markerButton.photoEntityId == nil {
@@ -785,7 +797,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         let normalizedPoint = CGPoint(x: normalizedX, y: normalizedY)
         
         // Вызываем метод и получаем сгенерированный UUID
-        if let pointId = repository.savePoint(forDrawing: drawingId, coordinate: normalizedPoint, layer: activeLayer) {
+        print("Point = \(location)")
+        if let pointId = repository.savePoint( forDrawing: drawingId, coordinate: location, layer: activeLayer) {
             pointMarker.accessibilityIdentifier = pointId.uuidString
         }
     }
@@ -917,6 +930,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
 
     @objc private func savePolylineAction() {
         guard let polylineId = currentPolylineId else { return }
+        print("PolyLine = \(currentPolylinePoints)")
         // Сохраняем полилинию с внешним идентификатором
         repository.savePolyline(forDrawing: drawingId, polylineId: polylineId, points: currentPolylinePoints, closed: true, layer: activeLayer)
         cancelCurrentPolyline()
@@ -930,6 +944,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
         guard let polylineId = currentPolylineId, let first = currentPolylinePoints.first else { return }
         currentPolylinePoints.append(first)
         updatePolylineLayer()
+        print("PolyLine = \(currentPolylinePoints)")
         repository.savePolyline(forDrawing: drawingId, polylineId: polylineId, points: currentPolylinePoints, closed: true, layer: activeLayer)
         cancelCurrentPolyline()
         hidePolylineControlPanel()
@@ -950,12 +965,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             guard let self = self,
                   let text = alert.textFields?.first?.text,
                   !text.isEmpty else { return }
-            
-            let normalizedX = location.x / self.pdfContentView.bounds.width
-            let normalizedY = location.y / self.pdfContentView.bounds.height
-            let normalizedPoint = CGPoint(x: normalizedX, y: normalizedY)
-
-            self.repository.saveText(forDrawing: self.drawingId, text: text, coordinate: normalizedPoint, layer: self.activeLayer)
+            print("Text = \(location)")
+            self.repository.saveText(forDrawing: self.drawingId, text: text, coordinate: location, layer: self.activeLayer)
             
             self.updateDrawingView()
         }))
@@ -986,13 +997,14 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
                 
                 switch self.currentPhotoOperation {
                 case .none:
+                    print("PhotoMarker - x = \(normalized.x), y = \(normalized.y)")
                     self.repository.savePhotoMarker(forDrawing: self.drawingId,
                                                     withId: markerId,
                                                     image: image,
                                                     photoNumber: photoNumber,
                                                     timestamp: Date(),
                                                     coordinateX: Double(normalized.x),
-                                                    coordinateY: Double(normalized.y))
+                                                    coordinateY: Double(normalized.y)) //здесь абсолютные значение, а не нормализованныые
                     marker.photo = image
                     
                 case .retake:
@@ -1151,9 +1163,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             markerButton.photoEntityId = markerData.id
             markerButton.normalizedCoordinate = markerData.coordinate
             
-            let centerX = markerData.coordinate.x * pdfContentView.bounds.width
-            let centerY = markerData.coordinate.y * pdfContentView.bounds.height
-            markerButton.center = CGPoint(x: centerX, y: centerY)
+            print("LoadPhoto = \(markerData.coordinate)")
+            markerButton.center = markerData.coordinate
             
             pdfImageView.addSubview(markerButton)
             pdfImageView.bringSubviewToFront(markerButton)
@@ -1170,9 +1181,8 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             marker.layer.cornerRadius = markerSize / 2
             marker.clipsToBounds = true
             marker.tag = 1001 // Задаем специальный tag для точек
-            let centerX = pointData.coordinate.x * pdfContentView.bounds.width
-            let centerY = pointData.coordinate.y * pdfContentView.bounds.height
-            marker.center = CGPoint(x: centerX, y: centerY)
+            print("LoadPoint = \(pointData.coordinate)")
+            marker.center = pointData.coordinate
             marker.accessibilityIdentifier = pointData.id.uuidString
             pdfImageView.addSubview(marker)
             pdfImageView.bringSubviewToFront(marker)
@@ -1504,6 +1514,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             layer.path = path.cgPath
             pdfContentView.layer.addSublayer(layer)
             
+            print("Rectangle = \(rect)")
             repository.saveRectangle(forDrawing: drawingId, rect: rect, layer: activeLayer)
             
             // Сбрасываем первую точку, чтобы можно было начать новый прямоугольник
@@ -1529,6 +1540,7 @@ class PDFViewController: UIViewController, UIImagePickerControllerDelegate, UINa
             shapeLayer.strokeColor = rectData.color.cgColor
             shapeLayer.lineWidth = 2.0
             shapeLayer.fillColor = UIColor.clear.cgColor
+            print("LoadRectangle = \(rectData.rect)")
             let path = UIBezierPath(rect: rectData.rect)
             shapeLayer.path = path.cgPath
             // Устанавливаем уникальный идентификатор и тип "rectangle" для корректного удаления с помощью ластика

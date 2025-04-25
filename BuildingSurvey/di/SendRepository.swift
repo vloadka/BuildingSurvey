@@ -758,6 +758,9 @@ class SendRepository {
                     )
                     // сохраняем пришедшие планы
                     for plan in plansResponse.content {
+                        let loadedScale = plan.scale ?? 0
+                        print("🔄 [SendRepository] Loaded plan id=\(plan.id), name='\(plan.name)', scale=\(loadedScale)")
+
                         generalRepository.addDrawing(
                             for: project,
                             name: plan.name,

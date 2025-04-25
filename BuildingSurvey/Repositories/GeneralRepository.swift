@@ -96,6 +96,7 @@ class GeneralRepository: ObservableObject {
                 print("    • name:        '\(newDrawing.name ?? "")'")
                 print("    • filePath:    '\(newDrawing.filePath ?? "nil")'")
                 print("    • pdfDataSize: \(newDrawing.pdfData?.count ?? 0) bytes")
+                print("    • scale: \(newDrawing.scale)")
                 print("👣 [GeneralRepository.addDrawing] вызван для project.id=\(project.id), servId=\(servId ?? -1), scale=\(scale ?? -1)")
                 
                 // ——— ЛОГ: выводим всю базу чертежей ———

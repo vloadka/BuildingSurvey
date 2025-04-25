@@ -122,8 +122,8 @@ struct PlansResponse: Codable {
 
 class ApiService {
     static let shared = ApiService()
-    let baseURL = URL(string: "http://192.168.0.190:8080")!
-    //let baseURL = URL(string: "http://127.0.0.1:8080")!
+    let baseURL = URL(string: "http://192.168.1.189:8080")!
+//    let baseURL = URL(string: "http://127.0.0.1:8080")!
     private let session: URLSession
     
     private init() {
@@ -420,6 +420,7 @@ class ApiService {
         guard let url = urlComponents.url else {
             throw URLError(.badURL)
         }
+        print("[ApiService.updateDrawing] PUT \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
@@ -429,6 +430,12 @@ class ApiService {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
+        
+           if !(200...299).contains(httpResponse.statusCode) {
+               let body = String(data: data, encoding: .utf8) ?? "<no body>"
+               print("[ApiService.updateDrawing] ERROR status=\(httpResponse.statusCode), body: \(body)")
+           }
+        
         return (data, httpResponse)
     }
 
